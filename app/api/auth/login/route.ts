@@ -23,7 +23,16 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const supabase = await createClient()
+    let supabase
+    try {
+      supabase = await createClient()
+    } catch (e) {
+      console.error('auth/login createClient:', e)
+      return NextResponse.json(
+        { error: 'حصل خطأ، حاول تاني' },
+        { status: 500 }
+      )
+    }
 
     let emailToUse: string
 

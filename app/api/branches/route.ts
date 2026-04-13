@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAnonClient } from '@/lib/supabase/anon'
 
 export async function GET() {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('branches')
-    .select('*')
-    .eq('is_active', true)
-    .order('name')
-  if (error) return NextResponse.json([], { status: 500 })
-  return NextResponse.json(data)
+  try {
+    const supabase = createAnonClient()
+    const { data, error } = await supabase
+      .from('branches')
+      .select('*')
+      .eq('is_active', true)
+      .order('name')
+    if (error) return NextResponse.json([], { status: 500 })
+    return NextResponse.json(data)
+  } catch (err) {
+    console.error('branches GET:', err)
+    return NextResponse.json([], { status: 500 })
+  }
 }

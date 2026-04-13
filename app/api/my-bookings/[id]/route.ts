@@ -13,7 +13,13 @@ export async function PATCH(
       service, amount, notes, appointmentDate, status
     } = body
 
-    const supabase = await createClient()
+    let supabase
+    try {
+      supabase = await createClient()
+    } catch (e) {
+      console.error('my-bookings PATCH createClient:', e)
+      return NextResponse.json({ error: 'حصل خطأ' }, { status: 500 })
+    }
 
     // Verify this booking belongs to this agent
     const { data: existing } = await supabase

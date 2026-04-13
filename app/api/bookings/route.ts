@@ -18,7 +18,13 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const supabase = await createClient()
+    let supabase
+    try {
+      supabase = await createClient()
+    } catch (e) {
+      console.error('bookings POST createClient:', e)
+      return NextResponse.json({ error: 'حصل خطأ، حاول تاني' }, { status: 500 })
+    }
 
     // Check freeze
     const { data: freezes } = await supabase

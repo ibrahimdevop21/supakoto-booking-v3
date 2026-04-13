@@ -4,7 +4,13 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function GET() {
   try {
-    const supabase = await createClient()
+    let supabase
+    try {
+      supabase = await createClient()
+    } catch (e) {
+      console.error('auth/me createClient:', e)
+      return NextResponse.json({ error: 'Server error' }, { status: 500 })
+    }
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
