@@ -117,14 +117,47 @@ body::before {
   min-width: 280px;
 }
 
-/* Unified booking shell — 3 columns */
-.booking-unified-grid {
+/* Unified booking shell — desktop default */
+.booking-unified-grid.booking-grid-desktop {
   display: grid;
   grid-template-columns: 480px 1fr 400px;
   gap: 0;
   height: 100%;
   overflow: hidden;
 }
+
+/* Tablet: 340px + form */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .booking-unified-grid.booking-grid-tablet {
+    display: grid !important;
+    grid-template-columns: 340px 1fr !important;
+    grid-template-rows: auto 1fr !important;
+    grid-template-areas:
+      "bcal bform"
+      "bmid bform" !important;
+    gap: 0 !important;
+    height: 100%;
+    overflow: hidden;
+  }
+  .booking-unified-grid.booking-grid-tablet .booking-cal-column {
+    grid-area: bcal;
+    border-right: 1px solid var(--border-subtle);
+    min-height: 0;
+  }
+  .booking-unified-grid.booking-grid-tablet .booking-middle-column {
+    grid-area: bmid;
+    border-right: 1px solid var(--border-subtle);
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .booking-unified-grid.booking-grid-tablet .booking-form-column {
+    grid-area: bform;
+    align-self: stretch;
+    overflow-y: auto;
+    border-right: none;
+  }
+}
+
 .booking-cal-column {
   border-right: 1px solid var(--border-subtle);
   padding: 20px 16px;
@@ -152,25 +185,193 @@ body::before {
   scrollbar-color: var(--border-default) transparent;
 }
 
-@media (max-width: 768px) {
-  .booking-unified-grid {
-    grid-template-columns: 1fr;
+/* Mobile shell: main area fills above tab bar */
+.booking-page-root[data-layout="mobile"] {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.booking-page-root[data-layout="mobile"] > .booking-unified-grid.booking-grid-mobile {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Mobile: single column scroll; layout controlled by React visibility */
+@media (max-width: 767px) {
+  html, body {
     overflow: auto;
-    height: auto;
   }
-  .booking-cal-column,
-  .booking-middle-column,
-  .booking-form-column {
-    overflow: visible;
-    border-right: none;
-    border-bottom: 1px solid var(--border-subtle);
+  .booking-unified-grid.booking-grid-mobile {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    min-height: 0 !important;
+  }
+  .booking-unified-grid.booking-grid-mobile .booking-cal-column,
+  .booking-unified-grid.booking-grid-mobile .booking-middle-column,
+  .booking-unified-grid.booking-grid-mobile .booking-form-column {
+    border-right: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  .booking-tab-panel.booking-grid-mobile {
+    animation: bookingTabFadeIn 0.2s ease both;
+  }
+}
+
+@keyframes bookingTabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Mobile touch targets & iOS 16px inputs */
+@media (max-width: 767px) {
+  .booking-grid-mobile .cal-day:not(:disabled) {
+    min-height: 44px;
+    font-size: 14px !important;
+    border-radius: var(--radius-sm);
+  }
+  .booking-grid-mobile .sk-input:not(textarea) {
+    min-height: 44px !important;
+    font-size: 16px !important;
+  }
+  .booking-grid-mobile textarea.sk-input,
+  .booking-grid-mobile .sk-input[rows],
+  .booking-form-card textarea.sk-input {
+    font-size: 16px !important;
+  }
+  .booking-grid-mobile .booking-form-submit-btn {
+    min-height: 44px !important;
+  }
+  .booking-form-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+  .booking-addons-grid {
+    max-height: 240px !important;
+  }
+  .booking-form-submit-wrap {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding-top: 8px;
+    margin-top: 16px !important;
+    background: linear-gradient(
+      to top,
+      var(--surface-card) 60%,
+      transparent
+    );
+  }
+  .booking-form-submit-btn {
+    box-shadow:
+      0 -8px 24px rgba(8, 12, 20, 0.8),
+      0 4px 16px rgba(191, 30, 46, 0.3) !important;
+  }
+}
+
+/* Bottom tab bar */
+.bottom-tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  height: 60px;
+  background: rgba(13, 18, 32, 0.97);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid var(--border-subtle);
+  z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .bottom-tab-bar {
+    padding-bottom: env(safe-area-inset-bottom);
+    min-height: calc(60px + env(safe-area-inset-bottom));
+  }
+}
+
+.bottom-tab-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.15s ease, opacity 0.15s ease;
+  padding: 8px 0;
+  color: var(--text-muted);
+  font-family: inherit;
+}
+
+.bottom-tab-btn--active {
+  color: var(--brand-red);
+}
+
+.bottom-tab-indicator {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 2px;
+  background: var(--brand-red);
+  border-radius: 99px;
+}
+
+.bottom-tab-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.bottom-tab-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.bottom-tab-bar-entrance {
+  animation: bottomTabEnter 0.3s ease 0.1s both;
+}
+
+@keyframes bottomTabEnter {
+  from {
+    transform: translateY(60px);
+    opacity: 0.85;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 767px) {
+  .booking-header--mobile .booking-header-nav-desktop {
+    display: none !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .bottom-tab-bar {
+    display: none !important;
   }
 }
 
 @media (max-width: 840px) {
-  html, body {
-    overflow: auto;
-  }
   .scroll-col {
     overflow-y: visible;
   }

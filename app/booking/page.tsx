@@ -70,6 +70,28 @@ const AR_MONTHS = [
 ];
 const DAY_HEADS = ["أح","إث","ثل","أر","خم","جم","سب"];
 
+type LayoutMode = "mobile" | "tablet" | "desktop";
+
+function useLayoutMode(): LayoutMode {
+  const read = () => {
+    if (typeof window === "undefined") return "desktop" as LayoutMode;
+    const w = window.innerWidth;
+    if (w < 768) return "mobile";
+    if (w < 1024) return "tablet";
+    return "desktop";
+  };
+  const [mode, setMode] = useState<LayoutMode>(() =>
+    typeof window !== "undefined" ? read() : "desktop"
+  );
+  useEffect(() => {
+    const onResize = () => setMode(read);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return mode;
+}
+
 type BranchRow = { id: string; name: string; name_en?: string; daily_cap?: number };
 
 type SlotInfo = {
@@ -292,6 +314,12 @@ function BookingPageInner() {
   const [editCapLoading, setEditCapLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [editMobileErr, setEditMobileErr] = useState(false);
+
+  const layoutMode = useLayoutMode();
+  const [mobileTab, setMobileTab] = useState(0);
+  const mobileDateNavTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
   const selectedDate = form.appointmentDate;
 
@@ -694,7 +722,21 @@ function BookingPageInner() {
     }
   };
 
-  const onDatePick = (d: string) => setForm((f) => ({ ...f, appointmentDate: d }));
+  const pickAppointmentDate = useCallback(
+    (d: string) => {
+      setForm((f) => ({ ...f, appointmentDate: d }));
+      if (layoutMode === "mobile") {
+        if (mobileDateNavTimerRef.current) {
+          clearTimeout(mobileDateNavTimerRef.current);
+        }
+        mobileDateNavTimerRef.current = setTimeout(() => {
+          setMobileTab(1);
+          mobileDateNavTimerRef.current = null;
+        }, 300);
+      }
+    },
+    [layoutMode]
+  );
 
   const patchBooking = async (id: string, body: Record<string, unknown>) => {
     if (!agent) return false;
@@ -1712,131 +1754,218 @@ function BookingPageInner() {
     textTransform: "uppercase",
   };
 
+  const isMobile = layoutMode === "mobile";
+  const hideCal = isMobile && mobileTab !== 0;
+  const hideCap = isMobile && mobileTab !== 0;
+  const hideBook = isMobile && mobileTab !== 1;
+  const hideForm = isMobile && mobileTab !== 2;
+
   return (
     <div
+      className="booking-page-root"
+      data-layout={layoutMode}
       style={{
         display: "flex",
         flexDirection: "column",
         height: "100vh",
         background: "var(--surface-deep)",
         overflow: "hidden",
+        paddingBottom: isMobile ? "env(safe-area-inset-bottom, 0px)" : undefined,
       }}
     >
       <header
-        dir="rtl"
+        className={`booking-header ${isMobile ? "booking-header--mobile" : ""}`}
+        dir={isMobile ? "ltr" : "rtl"}
         style={{
-          height: 56,
+          height: isMobile ? 48 : 56,
           flexShrink: 0,
           display: "grid",
-          gridTemplateColumns: "auto 1fr auto",
+          gridTemplateColumns: isMobile ? "1fr auto 1fr" : "auto 1fr auto",
           alignItems: "center",
-          gap: 16,
-          padding: "0 24px",
-          background: "rgba(13,18,32,0.92)",
+          gap: isMobile ? 8 : 16,
+          padding: isMobile ? "0 12px" : "0 24px",
+          background: isMobile
+            ? "rgba(8,12,20,0.95)"
+            : "rgba(13,18,32,0.92)",
           backdropFilter: "blur(20px)",
           borderBottom: "1px solid var(--border-subtle)",
           zIndex: 50,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo.svg"
-            alt="SupaKoto"
-            style={{ width: 100, height: "auto", objectFit: "contain" }}
-          />
-        </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "var(--space-2)",
-            minWidth: 0,
-          }}
-        >
-          {isOps && (
-            <Link href="/ops" style={headerGhostPill}>
-              لوحة العمليات
-            </Link>
-          )}
-          {isAdmin && (
-            <>
-              <Link href="/ops" style={headerGhostPill}>
-                لوحة العمليات
-              </Link>
-              <Link href="/admin" style={headerGhostPill}>
-                الإدارة
-              </Link>
-            </>
-          )}
-        </div>
-        <div
-          dir="ltr"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
-          <button
-            type="button"
-            onClick={handleLogout}
-            style={{
-              background: "transparent",
-              border: "none",
-              borderRadius: "var(--radius-sm)",
-              color: "var(--text-secondary)",
-              fontSize: "11px",
-              padding: "6px 8px",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              transition: "color 0.15s ease",
-              flexShrink: 0,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--brand-red)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-secondary)";
-            }}
-          >
-            خروج
-          </button>
-          <div
-            style={{
-              width: 1,
-              height: 18,
-              background: "var(--border-default)",
-              flexShrink: 0,
-            }}
-          />
-          <span
-            style={{
-              fontSize: "13px",
-              fontWeight: 600,
-              color: "var(--text-primary)",
-            }}
-          >
-            {agent.name}
-          </span>
-        </div>
+        {isMobile ? (
+          <>
+            <button
+              type="button"
+              className="booking-header-logout"
+              onClick={handleLogout}
+              style={{
+                background: "transparent",
+                border: "none",
+                borderRadius: "var(--radius-sm)",
+                color: "var(--text-secondary)",
+                fontSize: 11,
+                padding: "6px 8px",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                justifySelf: "start",
+              }}
+            >
+              خروج
+            </button>
+            <div
+              className="booking-header-logo"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo.svg"
+                alt="SupaKoto"
+                style={{
+                  width: 80,
+                  height: "auto",
+                  objectFit: "contain",
+                }}
+              />
+            </div>
+            <span
+              className="booking-header-user"
+              dir="ltr"
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--text-primary)",
+                justifySelf: "end",
+              }}
+            >
+              {agent.name}
+            </span>
+          </>
+        ) : (
+          <>
+            <div className="booking-header-logo" style={{ display: "flex", alignItems: "center" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo.svg"
+                alt="SupaKoto"
+                style={{ width: 100, height: "auto", objectFit: "contain" }}
+              />
+            </div>
+            <div
+              className="booking-header-nav-desktop"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "var(--space-2)",
+                minWidth: 0,
+              }}
+            >
+              {isOps && (
+                <Link href="/ops" style={headerGhostPill}>
+                  لوحة العمليات
+                </Link>
+              )}
+              {isAdmin && (
+                <>
+                  <Link href="/ops" style={headerGhostPill}>
+                    لوحة العمليات
+                  </Link>
+                  <Link href="/admin" style={headerGhostPill}>
+                    الإدارة
+                  </Link>
+                </>
+              )}
+            </div>
+            <div
+              dir="ltr"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
+              <button
+                type="button"
+                onClick={handleLogout}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  borderRadius: "var(--radius-sm)",
+                  color: "var(--text-secondary)",
+                  fontSize: "11px",
+                  padding: "6px 8px",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  transition: "color 0.15s ease",
+                  flexShrink: 0,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--brand-red)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "var(--text-secondary)";
+                }}
+              >
+                خروج
+              </button>
+              <div
+                style={{
+                  width: 1,
+                  height: 18,
+                  background: "var(--border-default)",
+                  flexShrink: 0,
+                }}
+              />
+              <span
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "var(--text-primary)",
+                }}
+              >
+                {agent.name}
+              </span>
+            </div>
+          </>
+        )}
       </header>
 
       <div
-        className="booking-unified-grid"
+        className={`booking-unified-grid booking-tab-panel ${
+          layoutMode === "desktop"
+            ? "booking-grid-desktop"
+            : layoutMode === "tablet"
+              ? "booking-grid-tablet"
+              : "booking-grid-mobile"
+        }`}
         style={{
-          height: "calc(100vh - 56px)",
+          height:
+            layoutMode === "mobile"
+              ? "calc(100vh - 48px - 60px - env(safe-area-inset-bottom, 0px))"
+              : "calc(100vh - 56px)",
           direction: "ltr",
-          gridTemplateColumns: "480px 1fr 400px",
-          overflow: "hidden",
+          ...(layoutMode === "desktop"
+            ? {
+                gridTemplateColumns: "480px 1fr 400px",
+                overflow: "hidden",
+              }
+            : layoutMode === "tablet"
+              ? { overflow: "hidden" }
+              : {
+                  overflow: "auto",
+                  WebkitOverflowScrolling: "touch",
+                }),
         }}
       >
         <div
           className="booking-cal-column"
           style={{
             direction: "rtl",
-            display: "flex",
+            display: hideCal ? "none" : "flex",
             flexDirection: "column",
             gap: 12,
           }}
@@ -2003,7 +2132,7 @@ function BookingPageInner() {
                     type="button"
                     disabled={past}
                     className="cal-day"
-                    onClick={() => onDatePick(d)}
+                    onClick={() => pickAppointmentDate(d)}
                     style={{
                       width: "100%",
                       aspectRatio: "1",
@@ -2314,7 +2443,22 @@ function BookingPageInner() {
           </div>
         </div>
 
-        <div className="booking-middle-column" style={{ direction: "rtl" }}>
+        <div
+          className="booking-middle-column"
+          style={{
+            direction: "rtl",
+            display:
+              hideCap && hideBook && !(
+                isMobile &&
+                mobileTab === 1 &&
+                !selectedDate
+              )
+                ? "none"
+                : "flex",
+            flexDirection: "column",
+            gap: 16,
+          }}
+        >
           <div
             style={{
               background: "var(--surface-card)",
@@ -2324,6 +2468,7 @@ function BookingPageInner() {
               boxShadow: "var(--card-shadow)",
               width: "100%",
               boxSizing: "border-box",
+              ...(hideCap ? { display: "none" } : {}),
             }}
           >
             {!selectedDate ? (
@@ -2630,13 +2775,56 @@ function BookingPageInner() {
             )}
           </div>
 
+              {isMobile && mobileTab === 1 && !selectedDate ? (
+                <div
+                  className="booking-mobile-pick-day"
+                  style={{
+                    background: "var(--surface-card)",
+                    border: "1px solid var(--border-subtle)",
+                    borderRadius: "var(--radius-lg)",
+                    padding: "var(--space-5)",
+                    boxShadow: "var(--card-shadow)",
+                    textAlign: "center",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: "var(--text-sm)",
+                      color: "var(--text-muted)",
+                      marginBottom: 16,
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    اختار يوم من التقويم
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setMobileTab(0)}
+                    style={{
+                      minHeight: 44,
+                      padding: "0 20px",
+                      background: "var(--surface-elevated)",
+                      border: `1px solid var(--border-default)`,
+                      borderRadius: "var(--radius-md)",
+                      color: "var(--text-primary)",
+                      fontSize: "var(--text-sm)",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    اذهب للتقويم
+                  </button>
+                </div>
+              ) : null}
+
               {selectedDate && (
               <div
                 id="booking-day-panel"
                 className="fade-up"
                 style={{
                   animationDelay: "0.05s",
-                  display: "flex",
+                  display: hideBook ? "none" : "flex",
                   flexDirection: "column",
                   gap: "var(--space-3)",
                   width: "100%",
@@ -2648,19 +2836,44 @@ function BookingPageInner() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
+                    gap: 8,
+                    flexWrap: "wrap",
                   }}
                 >
-                  <span
+                  <div
                     style={{
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      color: "var(--text-muted)",
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      flexWrap: "wrap",
                     }}
                   >
-                    مواعيدك في هذا اليوم
-                  </span>
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        color: "var(--text-muted)",
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {isMobile ? "مواعيدك" : "مواعيدك في هذا اليوم"}
+                    </span>
+                    {isMobile && (
+                      <span
+                        style={{
+                          fontSize: "10px",
+                          color: "var(--text-secondary)",
+                          background: "var(--surface-elevated)",
+                          padding: "2px 10px",
+                          borderRadius: 99,
+                          border: `1px solid var(--border-default)`,
+                        }}
+                      >
+                        {formatBookingDateAr(selectedDate)}
+                      </span>
+                    )}
+                  </div>
                   <span
                     style={{
                       fontSize: "10px",
@@ -2725,6 +2938,7 @@ function BookingPageInner() {
                               تعديل الحجز
                             </div>
                             <div
+                              className="booking-form-grid-2"
                               style={{
                                 display: "grid",
                                 gridTemplateColumns: "1fr 1fr",
@@ -2822,6 +3036,7 @@ function BookingPageInner() {
                               />
                             </div>
                             <div
+                              className="booking-form-grid-2"
                               style={{
                                 display: "grid",
                                 gridTemplateColumns: "1fr 1fr",
@@ -3221,9 +3436,14 @@ function BookingPageInner() {
 
         <div
           className="booking-form-column"
-          style={{ direction: "rtl" }}
+          style={{
+            direction: "rtl",
+            display: hideForm ? "none" : "flex",
+            flexDirection: "column",
+          }}
         >
           <div
+            className="booking-form-card"
             style={{
               background: "var(--surface-card)",
               border: `1px solid var(--border-subtle)`,
@@ -3242,6 +3462,7 @@ function BookingPageInner() {
               }}
             >
               <h1
+                className="booking-form-title"
                 style={{
                   fontSize: "var(--text-lg)",
                   fontWeight: 700,
@@ -3264,6 +3485,7 @@ function BookingPageInner() {
 
             <SectionDivider>بيانات العميل</SectionDivider>
             <div
+              className="booking-form-grid-2"
               style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
@@ -3327,6 +3549,7 @@ function BookingPageInner() {
 
             <SectionDivider>تفاصيل الحجز</SectionDivider>
             <div
+              className="booking-form-grid-2"
               style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
@@ -3415,6 +3638,7 @@ function BookingPageInner() {
               />
             </div>
             <div
+              className="booking-form-grid-2"
               style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
@@ -3470,6 +3694,7 @@ function BookingPageInner() {
 
             <SectionDivider>إضافات</SectionDivider>
             <div
+              className="booking-addons-grid"
               style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
@@ -3563,7 +3788,10 @@ function BookingPageInner() {
               </p>
             )}
 
-            <div style={{ marginTop: "var(--space-5)" }}>
+            <div
+              className="booking-form-submit-wrap"
+              style={{ marginTop: "var(--space-5)" }}
+            >
               {isFull ? (
                 <div
                   style={{
@@ -3584,6 +3812,7 @@ function BookingPageInner() {
               ) : (
                 <button
                   type="button"
+                  className="booking-form-submit-btn"
                   onClick={() => void handleSubmit()}
                   style={{
                     width: "100%",
@@ -3626,6 +3855,31 @@ function BookingPageInner() {
           </div>
         </div>
       </div>
+
+      {isMobile && (
+        <nav className="bottom-tab-bar bottom-tab-bar-entrance">
+          {(
+            [
+              { id: 0, icon: "📅", label: "التقويم" },
+              { id: 1, icon: "📋", label: "مواعيدي" },
+              { id: 2, icon: "➕", label: "حجز جديد" },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={`bottom-tab-btn${mobileTab === t.id ? " bottom-tab-btn--active" : ""}`}
+              onClick={() => setMobileTab(t.id)}
+            >
+              {mobileTab === t.id && (
+                <span className="bottom-tab-indicator" aria-hidden />
+              )}
+              <span className="bottom-tab-icon">{t.icon}</span>
+              <span className="bottom-tab-label">{t.label}</span>
+            </button>
+          ))}
+        </nav>
+      )}
     </div>
   );
 }
