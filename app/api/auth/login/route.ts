@@ -1,25 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { formatAgentDisplayName } from '@/lib/agent-display-name'
 import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
   try {
-    const { username, password } = await req.json()
+    const body = await req.json()
+    const username = typeof body.username === 'string' ? body.username : ''
+    const agentId = typeof body.agentId === 'string' ? body.agentId : ''
+    const password = typeof body.password === 'string' ? body.password : ''
 
-    if (!username || !password) {
+    if (!password) {
       return NextResponse.json(
-        { error: 'اسم المستخدم وكلمة المرور مطلوبين' },
+        { error: 'كلمة المرور مطلوبة' },
+        { status: 400 }
+      )
+    }
+
+    if (!username.trim() && !agentId.trim()) {
+      return NextResponse.json(
+        { error: 'اسم المستخدم أو اختيار المندوب مطلوب' },
         { status: 400 }
       )
     }
 
     const supabase = await createClient()
 
-    const email = username.trim().toLowerCase().includes('@')
-      ? username.trim().toLowerCase()
-      : `${username.trim().toLowerCase()}@supakoto.org`
+    let emailToUse: string
+
+    if (agentId.trim()) {
+      const { data: agentRow, error: agentErr } = await supabase
+        .from('agents')
+        .select('id, name, role, is_active, username, user_id')
+        .eq('id', agentId.trim())
+        .single()
+
+      if (agentErr || !agentRow) {
+        return NextResponse.json(
+          { error: 'الحساب غير موجود' },
+          { status: 404 }
+        )
+      }
+
+      if (!agentRow.is_active) {
+        return NextResponse.json(
+          { error: 'الحساب غير مفعل، تواصل مع الإدارة' },
+          { status: 403 }
+        )
+      }
+
+      const u = agentRow.username?.trim().toLowerCase()
+      if (!u) {
+        return NextResponse.json(
+          { error: 'الحساب غير مكتمل — شغّل SQL لحقل username' },
+          { status: 400 }
+        )
+      }
+
+      emailToUse = `${u}@supakoto.org`
+    } else {
+      emailToUse = username.trim().toLowerCase().includes('@')
+        ? username.trim().toLowerCase()
+        : `${username.trim().toLowerCase()}@supakoto.org`
+    }
 
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: emailToUse,
       password,
     })
 
@@ -43,9 +88,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    if (agentId.trim() && agent.id !== agentId.trim()) {
+      return NextResponse.json(
+        { error: 'الجلسة لا تطابق المندوب' },
+        { status: 403 }
+      )
+    }
+
+    const displayName = formatAgentDisplayName(agent.name)
     const res = NextResponse.json({
       id: agent.id,
-      name: agent.name,
+      name: displayName,
       role: agent.role,
     })
     const week = 60 * 60 * 24 * 7
@@ -54,7 +107,7 @@ export async function POST(req: NextRequest) {
       maxAge: week,
       sameSite: 'lax',
     })
-    res.cookies.set('agent_name', String(agent.name ?? ''), {
+    res.cookies.set('agent_name', displayName, {
       path: '/',
       maxAge: week,
       sameSite: 'lax',

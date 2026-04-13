@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { formatAgentDisplayName } from '@/lib/agent-display-name'
 import { createClient } from '@/lib/supabase/server'
 
 export async function GET() {
@@ -20,7 +21,10 @@ export async function GET() {
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 })
     }
 
-    return NextResponse.json(agent)
+    return NextResponse.json({
+      ...agent,
+      name: formatAgentDisplayName(agent.name),
+    })
   } catch {
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
