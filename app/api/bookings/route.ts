@@ -163,6 +163,25 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) throw error
+
+    // Auto-create workshop job
+    const { error: workshopJobErr } = await supabase
+      .from('workshop_jobs')
+      .insert({
+        booking_id: booking.id,
+        branch_id: booking.branch_id,
+        car_model: booking.car_model || '',
+        customer_name: booking.customer_name,
+        customer_phone: booking.customer_phone,
+        service: booking.service,
+        job_type: 'installation',
+        status: 'WAITING',
+        appointment_date: booking.appointment_date,
+        technician_ids: [],
+        created_by: agentId,
+      })
+    if (workshopJobErr) console.error('workshop_jobs insert:', workshopJobErr)
+
     return NextResponse.json(booking, { status: 201 })
 
   } catch (err) {

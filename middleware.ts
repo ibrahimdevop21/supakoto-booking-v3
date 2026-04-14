@@ -69,6 +69,17 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
+    if (user && pathname.startsWith('/ops')) {
+      const r = role?.toLowerCase() ?? ''
+      const canOps =
+        r === 'ops' || r === 'admin' || role === 'أدمن'
+      if (!canOps) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/booking'
+        return NextResponse.redirect(url)
+      }
+    }
+
     if (user && role) {
       if (role === 'agent') {
         if (

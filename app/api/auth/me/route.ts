@@ -19,7 +19,7 @@ export async function GET() {
 
     const { data: agent } = await supabase
       .from('agents')
-      .select('id, name, role, is_active')
+      .select('id, name, role, is_active, branch_id')
       .eq('user_id', user.id)
       .single()
 
