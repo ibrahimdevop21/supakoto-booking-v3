@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAnonClient } from '@/lib/supabase/anon'
 
 export async function GET(req: NextRequest) {
   try {
@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'agentId required' }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const supabase = createAnonClient()
     const { data, error } = await supabase
       .from('bookings')
       .select('*, branches(name)')

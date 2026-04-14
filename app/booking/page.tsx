@@ -885,7 +885,10 @@ function BookingPageInner() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: "var(--space-6)",
+          paddingTop: "var(--space-6)",
+          paddingRight: "var(--space-6)",
+          paddingBottom: "var(--space-6)",
+          paddingLeft: "var(--space-6)",
           background: "var(--surface-deep)",
         }}
       >
@@ -932,7 +935,10 @@ function BookingPageInner() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: "var(--space-4)",
+          paddingTop: "var(--space-4)",
+          paddingRight: "var(--space-4)",
+          paddingBottom: "var(--space-4)",
+          paddingLeft: "var(--space-4)",
           background: "var(--surface-deep)",
         }}
       >
@@ -1084,7 +1090,10 @@ function BookingPageInner() {
             alignItems: "center",
             justifyContent: "center",
             zIndex: 50,
-            padding: 20,
+            paddingTop: 20,
+            paddingRight: 20,
+            paddingBottom: 20,
+            paddingLeft: 20,
           }}
         >
           <div
@@ -1370,7 +1379,10 @@ function BookingPageInner() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "var(--space-4)",
+            paddingTop: "var(--space-4)",
+            paddingRight: "var(--space-4)",
+            paddingBottom: "var(--space-4)",
+            paddingLeft: "var(--space-4)",
             background: "var(--surface-deep)",
           }}
         >
@@ -1491,7 +1503,10 @@ function BookingPageInner() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "var(--space-4)",
+            paddingTop: "var(--space-4)",
+            paddingRight: "var(--space-4)",
+            paddingBottom: "var(--space-4)",
+            paddingLeft: "var(--space-4)",
             background: "var(--surface-deep)",
           }}
         >
@@ -1580,7 +1595,10 @@ function BookingPageInner() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: "var(--space-4)",
+          paddingTop: "var(--space-4)",
+          paddingRight: "var(--space-4)",
+          paddingBottom: "var(--space-4)",
+          paddingLeft: "var(--space-4)",
           background: "var(--surface-deep)",
         }}
       >
