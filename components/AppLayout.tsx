@@ -47,6 +47,14 @@ function roleFlags(role: string | undefined) {
   return { isAdmin, isOps };
 }
 
+const SIDEBAR_EXPANDED_PX = 220;
+const SIDEBAR_COLLAPSED_PX = 56;
+const SIDEBAR_COLLAPSED_KEY = "sk-app-sidebar-collapsed";
+/** Full wordmark when the rail is expanded */
+const SIDEBAR_LOGO_FULL = "/logo.svg";
+/** Same asset as the app tab icon (`app/icon.svg` → `/icon.svg`) */
+const SIDEBAR_LOGO_COMPACT = "/icon.svg";
+
 export default function AppLayout({
   children,
   agent,
@@ -88,13 +96,42 @@ export default function AppLayout({
     window.location.href = "/login";
   }, []);
 
-  const sidebarW = tier === "desktop" ? 220 : tier === "tablet" ? 60 : 0;
   const showSidebar = tier !== "mobile";
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1") {
+        setSidebarCollapsed(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
+
+  const sidebarW = showSidebar
+    ? sidebarCollapsed
+      ? SIDEBAR_COLLAPSED_PX
+      : SIDEBAR_EXPANDED_PX
+    : 0;
+  const showSidebarLabels = showSidebar && !sidebarCollapsed;
 
   const navLinkBase: CSSProperties = {
     display: "flex",
     alignItems: "center",
-    justifyContent: tier === "tablet" ? "center" : "flex-start",
+    justifyContent: showSidebarLabels ? "flex-start" : "center",
     gap: 10,
     padding: "10px 12px",
     borderRadius: "var(--radius-md)",
@@ -175,27 +212,69 @@ export default function AppLayout({
             top: 0,
             zIndex: 40,
             overflow: "hidden",
+            boxSizing: "border-box",
+            transition: "width 0.2s ease",
           }}
         >
-          <div style={{ padding: tier === "tablet" ? "12px 8px" : "20px 16px 16px" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo.svg"
-              alt="SupaKoto"
-              width={tier === "tablet" ? 32 : 120}
-              height={tier === "tablet" ? 32 : undefined}
+          <div
+            style={{
+              padding: sidebarCollapsed ? "12px 8px" : "16px 14px 12px",
+              display: "flex",
+              flexDirection: sidebarCollapsed ? "column" : "row",
+              alignItems: sidebarCollapsed ? "center" : "flex-start",
+              justifyContent: "flex-start",
+              flexShrink: 0,
+            }}
+          >
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              aria-expanded={showSidebarLabels}
+              aria-label={
+                sidebarCollapsed ? "Expand navigation" : "Collapse navigation"
+              }
+              title={
+                sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+              }
               style={{
+                border: "none",
+                background: "transparent",
+                padding: 4,
+                margin: sidebarCollapsed ? "0 auto" : undefined,
+                cursor: "pointer",
+                borderRadius: "var(--radius-md)",
+                lineHeight: 0,
                 display: "block",
-                margin: tier === "tablet" ? "0 auto" : undefined,
-                objectFit: "contain",
+                flexShrink: 0,
+                transition: "background 0.15s ease",
               }}
-            />
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--surface-elevated)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={sidebarCollapsed ? SIDEBAR_LOGO_COMPACT : SIDEBAR_LOGO_FULL}
+                alt="SupaKoto"
+                width={sidebarCollapsed ? 32 : 120}
+                height={sidebarCollapsed ? 32 : undefined}
+                draggable={false}
+                style={{
+                  display: "block",
+                  objectFit: "contain",
+                  maxWidth: sidebarCollapsed ? 32 : "100%",
+                }}
+              />
+            </button>
           </div>
 
           <nav
             style={{
               flex: 1,
-              padding: 8,
+              padding: sidebarCollapsed ? "8px 6px" : 8,
               display: "flex",
               flexDirection: "column",
               gap: 4,
@@ -208,7 +287,7 @@ export default function AppLayout({
                 <Link
                   key={item.key}
                   href={item.href}
-                  title={tier === "tablet" ? item.label : undefined}
+                  title={!showSidebarLabels ? item.label : undefined}
                   style={{
                     ...navLinkBase,
                     ...(active ? navLinkActive : {}),
@@ -229,7 +308,7 @@ export default function AppLayout({
                   <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0 }}>
                     {item.icon}
                   </span>
-                  {tier !== "tablet" && <span>{item.label}</span>}
+                  {showSidebarLabels && <span>{item.label}</span>}
                 </Link>
               );
             })}
@@ -240,13 +319,14 @@ export default function AppLayout({
               borderTop: "1px solid var(--border-subtle)",
               padding: 12,
               display: "flex",
-              alignItems: "center",
-              gap: 10,
+              flexDirection: sidebarCollapsed ? "column" : "row",
+              alignItems: sidebarCollapsed ? "center" : "center",
+              gap: sidebarCollapsed ? 8 : 10,
               minHeight: 0,
             }}
           >
             <div
-              title={tier === "tablet" ? agent?.name : undefined}
+              title={!showSidebarLabels ? agent?.name : undefined}
               style={{
                 width: 32,
                 height: 32,
@@ -264,7 +344,7 @@ export default function AppLayout({
             >
               {initial}
             </div>
-            {tier !== "tablet" && (
+            {showSidebarLabels && (
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{
@@ -286,7 +366,7 @@ export default function AppLayout({
               onClick={() => void handleLogout()}
               aria-label="Sign out"
               style={{
-                marginLeft: "auto",
+                marginLeft: showSidebarLabels ? "auto" : 0,
                 background: "transparent",
                 border: "none",
                 color: "var(--text-muted)",
@@ -319,6 +399,7 @@ export default function AppLayout({
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
+          transition: "margin-left 0.2s ease",
         }}
       >
         {children}
