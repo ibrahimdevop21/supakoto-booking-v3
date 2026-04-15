@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import AppLayout from "@/components/AppLayout";
 import {
   useCallback,
   useEffect,
@@ -19,6 +19,7 @@ type AgentMe = {
   id: string;
   name: string;
   role: string;
+  branch_id?: string | null;
 };
 
 type BranchRow = {
@@ -120,7 +121,7 @@ function roleBadge(role: string): { label: string; style: CSSProperties } {
   const r = role.toLowerCase();
   if (r === "admin" || r === "أدمن") {
     return {
-      label: "أدمن",
+      label: "Admin",
       style: {
         background: "var(--error-bg)",
         border: "1px solid var(--error-border)",
@@ -130,7 +131,7 @@ function roleBadge(role: string): { label: string; style: CSSProperties } {
   }
   if (r === "ops") {
     return {
-      label: "عمليات",
+      label: "Ops",
       style: {
         background: "var(--warn-bg)",
         border: "1px solid var(--warn-border)",
@@ -139,7 +140,7 @@ function roleBadge(role: string): { label: string; style: CSSProperties } {
     };
   }
   return {
-    label: "مندوب",
+    label: "Agent",
     style: {
       background: "rgba(255,255,255,0.06)",
       border: "1px solid var(--border-default)",
@@ -276,7 +277,7 @@ export default function AdminPage() {
         showToast(
           typeof (data as { error?: unknown }).error === "string"
             ? (data as { error: string }).error
-            : "تعذر تحميل سجل التكرار",
+            : "Could not load duplicate log",
           "error"
         );
         setDuplicateLog([]);
@@ -284,7 +285,7 @@ export default function AdminPage() {
       }
       setDuplicateLog(Array.isArray(data) ? data : []);
     } catch {
-      showToast("تعذر تحميل سجل التكرار", "error");
+      showToast("Could not load duplicate log", "error");
       setDuplicateLog([]);
     } finally {
       setTabLoading("duplicate-log", false);
@@ -363,11 +364,6 @@ export default function AdminPage() {
     return map;
   }, [agents]);
 
-  const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.href = "/login";
-  };
-
   if (agentLoading) {
     return (
       <div
@@ -380,7 +376,7 @@ export default function AdminPage() {
           color: "var(--text-muted)",
         }}
       >
-        جاري التحميل...
+        Loading...
       </div>
     );
   }
@@ -388,13 +384,16 @@ export default function AdminPage() {
   if (!agent) return null;
 
   return (
+    <AppLayout agent={agent} currentPage="admin">
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "100vh",
+        flex: 1,
+        minHeight: 0,
+        height: "100%",
         background: "var(--surface-deep)",
-        direction: "rtl",
+        direction: "ltr",
         overflow: "hidden",
       }}
     >
@@ -404,96 +403,6 @@ export default function AdminPage() {
           to { opacity: 1; transform: translate(-50%, 0); }
         }
       `}</style>
-      <header
-        style={{
-          height: isMobile ? 48 : 56,
-          flexShrink: 0,
-          display: "grid",
-          gridTemplateColumns: isMobile ? "1fr auto 1fr" : "auto 1fr auto",
-          alignItems: "center",
-          gap: isMobile ? 8 : 16,
-          padding: isMobile ? "0 12px" : "0 24px",
-          background: "rgba(13,18,32,0.92)",
-          backdropFilter: "blur(20px)",
-          borderBottom: "1px solid var(--border-subtle)",
-          zIndex: 50,
-        }}
-      >
-        {isMobile ? (
-          <>
-            <button
-              type="button"
-              onClick={handleLogout}
-              style={{
-                ...logoutBtn,
-                justifySelf: "start",
-                padding: 0,
-              }}
-            >
-              خروج
-            </button>
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.svg" alt="" style={{ width: 80 }} />
-            </div>
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                justifySelf: "end",
-                color: "var(--text-primary)",
-              }}
-            >
-              {agent.name}
-            </span>
-          </>
-        ) : (
-          <>
-            <div style={{ display: "flex", alignItems: "center" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo.svg"
-                alt="SupaKoto"
-                style={{ width: 100, height: "auto", objectFit: "contain" }}
-              />
-            </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "var(--space-2)",
-                minWidth: 0,
-              }}
-            >
-              <Link href="/booking" style={headerGhostPill}>
-                الحجوزات
-              </Link>
-              <Link href="/ops" style={headerGhostPill}>
-                لوحة العمليات
-              </Link>
-              <span style={headerGhostPillActive}>الإدارة</span>
-            </div>
-            <div
-              dir="ltr"
-              style={{ display: "flex", alignItems: "center", gap: 12 }}
-            >
-              <button type="button" onClick={handleLogout} style={logoutBtn}>
-                خروج
-              </button>
-              <span
-                style={{
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  color: "var(--text-primary)",
-                }}
-              >
-                {agent.name}
-              </span>
-            </div>
-          </>
-        )}
-      </header>
 
       <div
         style={{
@@ -509,11 +418,11 @@ export default function AdminPage() {
       >
         {(
           [
-            ["agents", "المندوبين"],
-            ["branches", "الفروع"],
-            ["freezes", "التجميد"],
-            ["technicians", "الفنيين"],
-            ["duplicate-log", "سجل التكرار"],
+            ["agents", "Agents"],
+            ["branches", "Branches"],
+            ["freezes", "Freeze Windows"],
+            ["technicians", "Technicians"],
+            ["duplicate-log", "Duplicate Log"],
           ] as const
         ).map(([key, label]) => {
           const active = activeTab === key;
@@ -561,7 +470,7 @@ export default function AdminPage() {
                 const data = await r.json().catch(() => ({}));
                 if (!r.ok) {
                   showToast(
-                    typeof data.error === "string" ? data.error : "فشل تحديث الحالة",
+                    typeof data.error === "string" ? data.error : "Failed to update status",
                     "error"
                   );
                   return;
@@ -571,13 +480,13 @@ export default function AdminPage() {
                   prev.map((row) => (row.id === a.id ? { ...row, ...updated } : row))
                 );
                 showToast(
-                  nextIsActive ? "تم تفعيل المندوب بنجاح" : "تم إيقاف المندوب بنجاح",
+                  nextIsActive ? "Agent activated" : "Agent deactivated",
                   "success"
                 );
               };
               if (!nextIsActive) {
                 setConfirmAction({
-                  message: `هل تريد إيقاف ${a.name}؟ سيتم منعه من الدخول.`,
+                  message: `Are you sure you want to deactivate ${a.name}? They will no longer be able to sign in.`,
                   onConfirm: () => {
                     void runToggle();
                   },
@@ -607,14 +516,14 @@ export default function AdminPage() {
               const data = await r.json().catch(() => ({}));
               if (!r.ok) {
                 showToast(
-                  typeof data.error === "string" ? data.error : "فشل تحديث الطاقة اليومية",
+                  typeof data.error === "string" ? data.error : "Failed to update daily capacity",
                   "error"
                 );
                 setSavingBranchId(null);
                 return;
               }
               await loadBranches();
-              showToast("تم تحديث الطاقة اليومية بنجاح", "success");
+              showToast("Daily capacity updated", "success");
               setSavingBranchId(null);
             }}
             onToggleBranch={async (b) => {
@@ -627,7 +536,7 @@ export default function AdminPage() {
               const data = await r.json().catch(() => ({}));
               if (!r.ok) {
                 showToast(
-                  typeof data.error === "string" ? data.error : "فشل تحديث حالة الفرع",
+                  typeof data.error === "string" ? data.error : "Failed to update branch status",
                   "error"
                 );
                 setSavingBranchId(null);
@@ -635,7 +544,7 @@ export default function AdminPage() {
               }
               await loadBranches();
               showToast(
-                !b.is_active ? "تم تفعيل الفرع بنجاح" : "تم إيقاف الفرع بنجاح",
+                !b.is_active ? "Branch activated" : "Branch deactivated",
                 "success"
               );
               setSavingBranchId(null);
@@ -661,13 +570,13 @@ export default function AdminPage() {
               const data = await r.json().catch(() => ({}));
               if (!r.ok) {
                 showToast(
-                  typeof data.error === "string" ? data.error : "فشل حذف التجميد",
+                  typeof data.error === "string" ? data.error : "Failed to delete freeze",
                   "error"
                 );
                 return;
               }
               await loadFreezes();
-              showToast("تم حذف التجميد بنجاح", "success");
+              showToast("Freeze removed", "success");
             }}
           />
         )}
@@ -700,14 +609,14 @@ export default function AdminPage() {
               const data = await r.json().catch(() => ({}));
               if (!r.ok) {
                 showToast(
-                  typeof data.error === "string" ? data.error : "فشل تعديل بيانات الفني",
+                  typeof data.error === "string" ? data.error : "Failed to update technician",
                   "error"
                 );
                 return;
               }
               setEditingTechId(null);
               await loadTechnicians();
-              showToast("تم تعديل بيانات الفني بنجاح", "success");
+              showToast("Technician updated", "success");
             }}
             onDelete={async (id) => {
               const r = await fetch(`/api/admin/technicians/${id}`, {
@@ -716,13 +625,13 @@ export default function AdminPage() {
               const data = await r.json().catch(() => ({}));
               if (!r.ok) {
                 showToast(
-                  typeof data.error === "string" ? data.error : "فشل إيقاف الفني",
+                  typeof data.error === "string" ? data.error : "Failed to deactivate technician",
                   "error"
                 );
                 return;
               }
               await loadTechnicians();
-              showToast("تم إيقاف الفني بنجاح", "success");
+              showToast("Technician deactivated", "success");
             }}
           />
         )}
@@ -745,7 +654,7 @@ export default function AdminPage() {
           onSaved={async () => {
             setShowAddAgent(false);
             await loadAgents();
-            showToast("تم إضافة المندوب بنجاح", "success");
+            showToast("Agent added", "success");
           }}
         />
       )}
@@ -761,7 +670,7 @@ export default function AdminPage() {
             setAgents((prev) =>
               prev.map((row) => (row.id === updated.id ? { ...row, ...updated } : row))
             );
-            showToast("تم تعديل بيانات المندوب بنجاح", "success");
+            showToast("Agent updated", "success");
           }}
         />
       )}
@@ -773,7 +682,7 @@ export default function AdminPage() {
           onClose={() => setPasswordAgent(null)}
           onSaved={async () => {
             setPasswordAgent(null);
-            showToast("تم تغيير كلمة المرور بنجاح", "success");
+            showToast("Password updated", "success");
           }}
         />
       )}
@@ -786,7 +695,7 @@ export default function AdminPage() {
           onSaved={async () => {
             setShowAddFreeze(false);
             await loadFreezes();
-            showToast("تم إضافة نافذة التجميد بنجاح", "success");
+            showToast("Freeze window added", "success");
           }}
         />
       )}
@@ -799,7 +708,7 @@ export default function AdminPage() {
           onSaved={async () => {
             setShowAddTechnician(false);
             await loadTechnicians();
-            showToast("تم إضافة الفني بنجاح", "success");
+            showToast("Technician added", "success");
           }}
         />
       )}
@@ -819,7 +728,7 @@ export default function AdminPage() {
           }}
         >
           <div
-            dir="rtl"
+            dir="ltr"
             onClick={(e) => e.stopPropagation()}
             style={{
               width: "100%",
@@ -846,7 +755,7 @@ export default function AdminPage() {
                 style={ghostBtn}
                 onClick={() => setConfirmAction(null)}
               >
-                إلغاء
+                Cancel
               </button>
               <button
                 type="button"
@@ -856,7 +765,7 @@ export default function AdminPage() {
                   setConfirmAction(null);
                 }}
               >
-                تأكيد
+                Deactivate
               </button>
             </div>
           </div>
@@ -898,6 +807,7 @@ export default function AdminPage() {
         </div>
       )}
     </div>
+    </AppLayout>
   );
 }
 
@@ -931,23 +841,23 @@ function AgentsTab({
           flexWrap: isMobile ? "wrap" : "nowrap",
         }}
       >
-        <h2 style={sectionTitle}>المندوبين ({agents.length})</h2>
+        <h2 style={sectionTitle}>Agents ({agents.length})</h2>
         <button type="button" style={primaryBtn} onClick={onOpenAdd}>
-          إضافة مندوب +
+          + Add Agent
         </button>
       </div>
       {loading ? (
-        <p style={{ color: "var(--text-muted)" }}>جاري التحميل...</p>
+        <p style={{ color: "var(--text-muted)" }}>Loading...</p>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table style={tableStyle}>
             <thead>
               <tr style={trBorder}>
-                <th style={thStyle}>الاسم</th>
-                <th style={thStyle}>الدور</th>
-                <th style={thStyle}>الفرع</th>
-                <th style={thStyle}>الحالة</th>
-                <th style={thStyle}>الإجراءات</th>
+                <th style={thStyle}>Name</th>
+                <th style={thStyle}>Role</th>
+                <th style={thStyle}>Branch</th>
+                <th style={thStyle}>Status</th>
+                <th style={thStyle}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -991,27 +901,27 @@ function AgentsTab({
                               }),
                         }}
                       >
-                        {a.is_active ? "نشط" : "موقوف"}
+                        {a.is_active ? "Active" : "Inactive"}
                       </span>
                     </td>
                     <td style={tdStyle}>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         <button type="button" style={ghostBtnSmall} onClick={() => onEdit(a)}>
-                          تعديل
+                          Edit
                         </button>
                         <button
                           type="button"
                           style={ghostBtnSmall}
                           onClick={() => void onToggleActive(a)}
                         >
-                          {a.is_active ? "إيقاف" : "تفعيل"}
+                          {a.is_active ? "Deactivate" : "Activate"}
                         </button>
                         <button
                           type="button"
                           style={ghostBtnSmall}
                           onClick={() => onPassword(a)}
                         >
-                          كلمة مرور
+                          Password
                         </button>
                       </div>
                     </td>
@@ -1045,7 +955,7 @@ function BranchesTab({
   onSaveCap: (id: string, cap: number) => Promise<void>;
   onToggleBranch: (b: BranchRow) => Promise<void>;
 }) {
-  if (loading) return <p style={{ color: "var(--text-muted)" }}>جاري التحميل...</p>;
+  if (loading) return <p style={{ color: "var(--text-muted)" }}>Loading...</p>;
   return (
     <div
       style={{
@@ -1070,11 +980,11 @@ function BranchesTab({
                     : { background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-default)", color: "var(--text-muted)" }),
                 }}
               >
-                {b.is_active ? "نشط" : "موقوف"}
+                {b.is_active ? "Active" : "Inactive"}
               </span>
             </div>
             <div style={{ color: "var(--text-muted)", fontSize: 11, marginBottom: 8 }}>
-              الطاقة اليومية
+              Daily Cap
             </div>
             <div style={{ fontSize: 24, fontWeight: 700, color: "var(--brand-red)", marginBottom: 12 }}>
               {cap}
@@ -1116,7 +1026,7 @@ function BranchesTab({
                 disabled={savingBranchId === b.id}
                 onClick={() => void onSaveCap(b.id, cap)}
               >
-                حفظ
+                Save
               </button>
             </div>
             <button
@@ -1125,7 +1035,7 @@ function BranchesTab({
               disabled={savingBranchId === b.id}
               onClick={() => void onToggleBranch(b)}
             >
-              {b.is_active ? "إيقاف الفرع" : "تفعيل الفرع"}
+              {b.is_active ? "Deactivate Branch" : "Activate Branch"}
             </button>
           </div>
         );
@@ -1165,13 +1075,13 @@ function FreezesTab({
           flexWrap: isMobile ? "wrap" : "nowrap",
         }}
       >
-        <h2 style={sectionTitle}>التجميد ({activeOrUpcoming.length} نشط)</h2>
+        <h2 style={sectionTitle}>Freeze Windows ({activeOrUpcoming.length} active)</h2>
         <button type="button" style={primaryBtn} onClick={onOpenAdd}>
-          إضافة تجميد +
+          + Add Freeze
         </button>
       </div>
       {loading ? (
-        <p style={{ color: "var(--text-muted)" }}>جاري التحميل...</p>
+        <p style={{ color: "var(--text-muted)" }}>Loading...</p>
       ) : (
         <>
           <div style={{ display: "grid", gap: 10, marginBottom: 14 }}>
@@ -1181,7 +1091,7 @@ function FreezesTab({
               return (
                 <div key={f.id} style={{ ...cardStyle, padding: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                    <strong>{f.branches?.name ?? "كل الفروع"}</strong>
+                    <strong>{f.branches?.name ?? "All Branches"}</strong>
                     <button
                       type="button"
                       style={{ ...ghostBtnSmall, color: "#fca5a5", borderColor: "var(--error-border)" }}
@@ -1191,32 +1101,32 @@ function FreezesTab({
                     </button>
                   </div>
                   <div style={{ color: "var(--text-secondary)", fontSize: 12, marginBottom: 6 }}>
-                    من {formatArDate(f.freeze_start)} إلى {formatArDate(f.freeze_end)}
+                    From {formatArDate(f.freeze_start)} to {formatArDate(f.freeze_end)}
                   </div>
                   <div style={{ color: "var(--text-muted)", fontSize: 12, marginBottom: 8 }}>
                     {f.reason || "—"}
                   </div>
                   <span style={{ ...badgeBase, background: "var(--warn-bg)", border: "1px solid var(--warn-border)", color: "var(--warn)" }}>
-                    {days} يوم متبقي
+                    {days} days remaining
                   </span>
                 </div>
               );
             })}
             {activeOrUpcoming.length === 0 && (
-              <p style={{ color: "var(--text-muted)" }}>لا توجد نوافذ تجميد حالية</p>
+              <p style={{ color: "var(--text-muted)" }}>No active freeze windows</p>
             )}
           </div>
 
           <button type="button" style={ghostBtn} onClick={onTogglePast}>
-            التجميدات السابقة ({past.length}) {showPast ? "▲" : "▼"}
+            Past Freezes ({past.length}) {showPast ? "▲" : "▼"}
           </button>
           {showPast && (
             <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
               {past.map((f) => (
                 <div key={f.id} style={{ ...cardStyle, padding: 14, opacity: 0.75 }}>
-                  <strong>{f.branches?.name ?? "كل الفروع"}</strong>
+                  <strong>{f.branches?.name ?? "All Branches"}</strong>
                   <div style={{ color: "var(--text-secondary)", fontSize: 12, marginTop: 6 }}>
-                    من {formatArDate(f.freeze_start)} إلى {formatArDate(f.freeze_end)}
+                    From {formatArDate(f.freeze_start)} to {formatArDate(f.freeze_end)}
                   </div>
                   <div style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 4 }}>
                     {f.reason || "—"}
@@ -1272,18 +1182,18 @@ function TechniciansTab({
           flexWrap: isMobile ? "wrap" : "nowrap",
         }}
       >
-        <h2 style={sectionTitle}>الفنيين ({total})</h2>
+        <h2 style={sectionTitle}>Technicians ({total})</h2>
         <button type="button" style={primaryBtn} onClick={onOpenAdd}>
-          إضافة فني +
+          + Add Technician
         </button>
       </div>
       {loading ? (
-        <p style={{ color: "var(--text-muted)" }}>جاري التحميل...</p>
+        <p style={{ color: "var(--text-muted)" }}>Loading...</p>
       ) : (
         Array.from(groupedTechnicians.entries()).map(([key, rows]) => (
           <div key={key} style={{ ...cardStyle, marginBottom: 12, padding: 14 }}>
             <div style={{ fontWeight: 700, marginBottom: 10 }}>
-              {key === "float" ? "متنقل (بدون فرع)" : branchName(branches, key)} ({rows.length})
+              {key === "float" ? "Floater (No Branch)" : branchName(branches, key)} ({rows.length})
             </div>
             {rows.map((t) => (
               <div
@@ -1332,7 +1242,7 @@ function TechniciansTab({
                       }
                       style={{ ...inpStyle, width: 160, height: 34 }}
                     >
-                      <option value="">متنقل (بدون فرع)</option>
+                      <option value="">Floater (No Branch)</option>
                       {branches.map((b) => (
                         <option key={b.id} value={b.id}>
                           {b.name}
@@ -1340,10 +1250,10 @@ function TechniciansTab({
                       ))}
                     </select>
                     <button type="button" style={primaryBtnSmall} onClick={() => void onSaveEdit(t.id)}>
-                      حفظ
+                      Save
                     </button>
                     <button type="button" style={ghostBtnSmall} onClick={onCancelEdit}>
-                      إلغاء
+                      Cancel
                     </button>
                   </>
                 ) : (
@@ -1355,14 +1265,14 @@ function TechniciansTab({
                     </span>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: t.is_active ? "var(--success)" : "var(--text-muted)" }}>
                       <span style={{ width: 7, height: 7, borderRadius: "50%", background: t.is_active ? "var(--success)" : "var(--text-muted)" }} />
-                      {t.is_active ? "نشط" : "موقوف"}
+                      {t.is_active ? "Active" : "Inactive"}
                     </span>
                     <div style={{ marginInlineStart: "auto", display: "flex", gap: 6 }}>
                       <button type="button" style={ghostBtnSmall} onClick={() => onStartEdit(t)}>
-                        تعديل
+                        Edit
                       </button>
                       <button type="button" style={ghostBtnSmall} onClick={() => void onDelete(t.id)}>
-                        حذف
+                        Delete
                       </button>
                     </div>
                   </>
@@ -1390,25 +1300,25 @@ function DuplicateLogTab({
   return (
     <div>
       <h2 style={{ ...sectionTitle, marginBottom: 16, fontSize: isMobile ? 16 : 18 }}>
-        سجل محاولات الحجز المكررة ({rows.length})
+        Duplicate Booking Attempts ({rows.length})
       </h2>
       {loading ? (
-        <p style={{ color: "var(--text-muted)" }}>جاري التحميل...</p>
+        <p style={{ color: "var(--text-muted)" }}>Loading...</p>
       ) : rows.length === 0 ? (
         <div style={{ ...cardStyle, textAlign: "center", padding: 28 }}>
           <div style={{ fontSize: 26, marginBottom: 6 }}>✅</div>
-          <p style={{ color: "var(--text-muted)" }}>لا توجد محاولات مكررة</p>
+          <p style={{ color: "var(--text-muted)" }}>No duplicate attempts recorded</p>
         </div>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table style={tableStyle}>
             <thead>
               <tr style={trBorder}>
-                <th style={thStyle}>التاريخ والوقت</th>
-                <th style={thStyle}>المندوب الذي حاول</th>
-                <th style={thStyle}>رقم العميل</th>
-                <th style={thStyle}>التاريخ المطلوب</th>
-                <th style={thStyle}>المندوب الأصلي</th>
+                <th style={thStyle}>Time</th>
+                <th style={thStyle}>Attempted By</th>
+                <th style={thStyle}>Phone</th>
+                <th style={thStyle}>Date Requested</th>
+                <th style={thStyle}>Original Agent</th>
               </tr>
             </thead>
             <tbody>
@@ -1464,15 +1374,15 @@ function AddAgentModal({
 
   const submit = async () => {
     if (!name.trim() || !email.trim() || !password || !role) {
-      showToast("أكمل كل الحقول المطلوبة", "error");
+      showToast("Please complete all required fields", "error");
       return;
     }
     if (password.length < 6) {
-      showToast("كلمة المرور يجب أن تكون 6 أحرف على الأقل", "error");
+      showToast("Password must be at least 6 characters", "error");
       return;
     }
     if (role === "ops" && !branchId) {
-      showToast("الفرع مطلوب لدور العمليات", "error");
+      showToast("Branch is required for Operations role", "error");
       return;
     }
     setSaving(true);
@@ -1490,7 +1400,7 @@ function AddAgentModal({
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) {
-        showToast(typeof data.error === "string" ? data.error : "فشل الإضافة", "error");
+        showToast(typeof data.error === "string" ? data.error : "Add failed", "error");
         return;
       }
       await onSaved();
@@ -1500,11 +1410,11 @@ function AddAgentModal({
   };
 
   return (
-    <Modal title="إضافة مندوب جديد" onClose={onClose}>
-      <Field label="الاسم">
+    <Modal title="Add New Agent" onClose={onClose}>
+      <Field label="Name">
         <input className="sk-input" style={inpStyle} value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
-      <Field label="البريد الإلكتروني">
+      <Field label="Email">
         <input
           className="sk-input"
           type="email"
@@ -1514,26 +1424,26 @@ function AddAgentModal({
           onChange={(e) => setEmail(e.target.value)}
         />
       </Field>
-      <Field label="كلمة المرور / PIN">
+      <Field label="Password / PIN">
         <input
           className="sk-input"
           style={inpStyle}
           value={password}
           minLength={6}
-          placeholder="٦ أحرف على الأقل"
+          placeholder="Min. 6 characters"
           onChange={(e) => setPassword(e.target.value)}
         />
       </Field>
-      <Field label="الدور">
+      <Field label="Role">
         <select className="sk-input" style={inpStyle} value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="agent">مندوب</option>
-          <option value="ops">عمليات</option>
-          <option value="admin">أدمن</option>
+          <option value="agent">Agent</option>
+          <option value="ops">Operations</option>
+          <option value="admin">Admin</option>
         </select>
       </Field>
-      <Field label="الفرع">
+      <Field label="Branch">
         <select className="sk-input" style={inpStyle} value={branchId} onChange={(e) => setBranchId(e.target.value)}>
-          <option value="">— بدون فرع —</option>
+          <option value="">— No Branch —</option>
           {branches.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
@@ -1543,10 +1453,10 @@ function AddAgentModal({
       </Field>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
         <button type="button" style={ghostBtn} onClick={onClose}>
-          إلغاء
+          Cancel
         </button>
         <button type="button" style={primaryBtn} disabled={saving} onClick={() => void submit()}>
-          {saving ? "..." : "إضافة"}
+          {saving ? "..." : "Add Agent"}
         </button>
       </div>
     </Modal>
@@ -1574,11 +1484,11 @@ function EditAgentModal({
 
   const submit = async () => {
     if (!name.trim()) {
-      showToast("الاسم مطلوب", "error");
+      showToast("Name is required", "error");
       return;
     }
     if (role === "ops" && !branchId) {
-      showToast("الفرع مطلوب لدور العمليات", "error");
+      showToast("Branch is required for Operations role", "error");
       return;
     }
     setSaving(true);
@@ -1595,7 +1505,7 @@ function EditAgentModal({
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) {
-        showToast(typeof data.error === "string" ? data.error : "فشل التعديل", "error");
+        showToast(typeof data.error === "string" ? data.error : "Update failed", "error");
         return;
       }
       await onSaved(data as AgentRow);
@@ -1605,20 +1515,20 @@ function EditAgentModal({
   };
 
   return (
-    <Modal title="تعديل المندوب" onClose={onClose}>
-      <Field label="الاسم">
+    <Modal title="Edit Agent" onClose={onClose}>
+      <Field label="Name">
         <input className="sk-input" style={inpStyle} value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
-      <Field label="الدور">
+      <Field label="Role">
         <select className="sk-input" style={inpStyle} value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="agent">مندوب</option>
-          <option value="ops">عمليات</option>
-          <option value="admin">أدمن</option>
+          <option value="agent">Agent</option>
+          <option value="ops">Operations</option>
+          <option value="admin">Admin</option>
         </select>
       </Field>
-      <Field label="الفرع">
+      <Field label="Branch">
         <select className="sk-input" style={inpStyle} value={branchId} onChange={(e) => setBranchId(e.target.value)}>
-          <option value="">— بدون فرع —</option>
+          <option value="">— No Branch —</option>
           {branches.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
@@ -1626,23 +1536,23 @@ function EditAgentModal({
           ))}
         </select>
       </Field>
-      <Field label="الحالة">
+      <Field label="Status">
         <select
           className="sk-input"
           style={inpStyle}
           value={isActive ? "active" : "inactive"}
           onChange={(e) => setIsActive(e.target.value === "active")}
         >
-          <option value="active">نشط</option>
-          <option value="inactive">موقوف</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
         </select>
       </Field>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
         <button type="button" style={ghostBtn} onClick={onClose}>
-          إلغاء
+          Cancel
         </button>
         <button type="button" style={primaryBtn} disabled={saving} onClick={() => void submit()}>
-          {saving ? "..." : "حفظ"}
+          {saving ? "..." : "Save"}
         </button>
       </div>
     </Modal>
@@ -1665,7 +1575,7 @@ function ResetPasswordModal({
 
   const submit = async () => {
     if (password.length < 6) {
-      showToast("كلمة المرور يجب أن تكون 6 أحرف على الأقل", "error");
+      showToast("Password must be at least 6 characters", "error");
       return;
     }
     setSaving(true);
@@ -1677,7 +1587,7 @@ function ResetPasswordModal({
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) {
-        showToast(typeof data.error === "string" ? data.error : "فشل التحديث", "error");
+        showToast(typeof data.error === "string" ? data.error : "Update failed", "error");
         return;
       }
       await onSaved();
@@ -1687,24 +1597,24 @@ function ResetPasswordModal({
   };
 
   return (
-    <Modal title="تغيير كلمة المرور" onClose={onClose}>
+    <Modal title="Reset Password" onClose={onClose}>
       <p style={{ color: "var(--text-secondary)", marginBottom: 10 }}>{agent.name}</p>
-      <Field label="كلمة المرور الجديدة">
+      <Field label="New Password">
         <input
           className="sk-input"
           style={inpStyle}
           value={password}
           minLength={6}
-          placeholder="٦ أحرف على الأقل"
+          placeholder="Min. 6 characters"
           onChange={(e) => setPassword(e.target.value)}
         />
       </Field>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
         <button type="button" style={ghostBtn} onClick={onClose}>
-          إلغاء
+          Cancel
         </button>
         <button type="button" style={primaryBtn} disabled={saving} onClick={() => void submit()}>
-          {saving ? "..." : "تأكيد"}
+          {saving ? "..." : "Update Password"}
         </button>
       </div>
     </Modal>
@@ -1730,7 +1640,7 @@ function AddFreezeModal({
 
   const submit = async () => {
     if (!fromDate || !toDate) {
-      showToast("حدد تاريخ البداية والنهاية", "error");
+      showToast("Select start and end dates", "error");
       return;
     }
     setSaving(true);
@@ -1747,7 +1657,7 @@ function AddFreezeModal({
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) {
-        showToast(typeof data.error === "string" ? data.error : "فشل الإضافة", "error");
+        showToast(typeof data.error === "string" ? data.error : "Add failed", "error");
         return;
       }
       await onSaved();
@@ -1757,10 +1667,10 @@ function AddFreezeModal({
   };
 
   return (
-    <Modal title="إضافة نافذة تجميد" onClose={onClose}>
-      <Field label="الفرع">
+    <Modal title="Add Freeze Window" onClose={onClose}>
+      <Field label="Branch">
         <select className="sk-input" style={inpStyle} value={branchId} onChange={(e) => setBranchId(e.target.value)}>
-          <option value="">كل الفروع</option>
+          <option value="">All Branches</option>
           {branches.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
@@ -1768,10 +1678,10 @@ function AddFreezeModal({
           ))}
         </select>
       </Field>
-      <Field label="من تاريخ">
+      <Field label="From">
         <input className="sk-input" style={inpStyle} type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
       </Field>
-      <Field label="إلى تاريخ">
+      <Field label="To">
         <input
           className="sk-input"
           style={inpStyle}
@@ -1781,15 +1691,15 @@ function AddFreezeModal({
           onChange={(e) => setToDate(e.target.value)}
         />
       </Field>
-      <Field label="السبب">
+      <Field label="Reason (optional)">
         <input className="sk-input" style={inpStyle} value={reason} onChange={(e) => setReason(e.target.value)} />
       </Field>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
         <button type="button" style={ghostBtn} onClick={onClose}>
-          إلغاء
+          Cancel
         </button>
         <button type="button" style={primaryBtn} disabled={saving} onClick={() => void submit()}>
-          {saving ? "..." : "إضافة"}
+          {saving ? "..." : "Add Freeze"}
         </button>
       </div>
     </Modal>
@@ -1814,7 +1724,7 @@ function AddTechnicianModal({
 
   const submit = async () => {
     if (!name.trim()) {
-      showToast("الاسم مطلوب", "error");
+      showToast("Name is required", "error");
       return;
     }
     setSaving(true);
@@ -1831,7 +1741,7 @@ function AddTechnicianModal({
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) {
-        showToast(typeof data.error === "string" ? data.error : "فشل الإضافة", "error");
+        showToast(typeof data.error === "string" ? data.error : "Add failed", "error");
         return;
       }
       await onSaved();
@@ -1841,11 +1751,11 @@ function AddTechnicianModal({
   };
 
   return (
-    <Modal title="إضافة فني" onClose={onClose}>
-      <Field label="الاسم">
+    <Modal title="Add Technician" onClose={onClose}>
+      <Field label="Name">
         <input className="sk-input" style={inpStyle} value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
-      <Field label="المستوى">
+      <Field label="Level">
         <select className="sk-input" style={inpStyle} value={level} onChange={(e) => setLevel(e.target.value)}>
           {LEVEL_OPTIONS.map((l) => (
             <option key={l} value={l}>
@@ -1854,9 +1764,9 @@ function AddTechnicianModal({
           ))}
         </select>
       </Field>
-      <Field label="الفرع">
+      <Field label="Branch">
         <select className="sk-input" style={inpStyle} value={branchId} onChange={(e) => setBranchId(e.target.value)}>
-          <option value="">متنقل (بدون فرع)</option>
+          <option value="">Floater (No Branch)</option>
           {branches.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
@@ -1866,10 +1776,10 @@ function AddTechnicianModal({
       </Field>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
         <button type="button" style={ghostBtn} onClick={onClose}>
-          إلغاء
+          Cancel
         </button>
         <button type="button" style={primaryBtn} disabled={saving} onClick={() => void submit()}>
-          {saving ? "..." : "إضافة"}
+          {saving ? "..." : "Add"}
         </button>
       </div>
     </Modal>
@@ -1900,7 +1810,7 @@ function Modal({
       }}
     >
       <div
-        dir="rtl"
+        dir="ltr"
         onClick={(e) => e.stopPropagation()}
         style={{
           width: "100%",
@@ -1941,39 +1851,6 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-const headerGhostPill: CSSProperties = {
-  padding: "6px 14px",
-  borderRadius: 99,
-  fontSize: "var(--text-xs)",
-  fontWeight: 600,
-  fontFamily: "inherit",
-  background: "var(--surface-elevated)",
-  color: "var(--text-secondary)",
-  textDecoration: "none",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  border: "none",
-  cursor: "pointer",
-};
-
-const headerGhostPillActive: CSSProperties = {
-  ...headerGhostPill,
-  background: "var(--brand-red)",
-  color: "#fff",
-};
-
-const logoutBtn: CSSProperties = {
-  background: "transparent",
-  border: "none",
-  borderRadius: "var(--radius-sm)",
-  color: "var(--text-secondary)",
-  fontSize: "11px",
-  padding: "6px 8px",
-  cursor: "pointer",
-  fontFamily: "inherit",
-};
-
 const sectionTitle: CSSProperties = {
   fontSize: 18,
   fontWeight: 700,
@@ -2003,7 +1880,7 @@ const trBorder: CSSProperties = {
 
 const thStyle: CSSProperties = {
   padding: 10,
-  textAlign: "right",
+  textAlign: "left",
   color: "var(--text-muted)",
   fontWeight: 600,
   fontSize: 11,

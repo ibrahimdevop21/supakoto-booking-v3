@@ -9,8 +9,8 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import AppLayout from "@/components/AppLayout";
 
 const CAL_BRANCH_NAMES = ["التجمع", "زايد", "المعادي", "دمياط الجديدة"];
 
@@ -64,11 +64,21 @@ function parseAddonsFromRow(row: Record<string, unknown>): string[] | null {
   return null;
 }
 
-const AR_MONTHS = [
-  "يناير","فبراير","مارس","إبرايل","مايو","يونيو",
-  "يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر",
+const EN_MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
-const DAY_HEADS = ["أح","إث","ثل","أر","خم","جم","سب"];
+const DAY_HEADS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 type LayoutMode = "mobile" | "tablet" | "desktop";
 
@@ -243,7 +253,12 @@ function BookingPageInner() {
   const router = useRouter();
   const today = toISO(new Date());
 
-  const [agent, setAgent] = useState<{ id: string; name: string; role: string } | null>(null);
+  const [agent, setAgent] = useState<{
+    id: string;
+    name: string;
+    role: string;
+    branch_id?: string | null;
+  } | null>(null);
   const [agentLoading, setAgentLoading] = useState(true);
   const [agentErr, setAgentErr] = useState<string | null>(null);
   const [branches, setBranches] = useState<BranchRow[]>([]);
@@ -271,7 +286,7 @@ function BookingPageInner() {
     car: "",
     service: "",
     amount: "",
-    appointmentDate: "",
+    appointmentDate: today,
     notes: "",
   });
 
@@ -427,7 +442,7 @@ function BookingPageInner() {
       const data = await r.json().catch(() => ({}));
       if (!r.ok) {
         setAgentErr(
-          typeof data?.error === "string" ? data.error : "تعذر تحميل الحساب"
+          typeof data?.error === "string" ? data.error : "Failed to load account"
         );
         setAgentLoading(false);
         return;
@@ -560,11 +575,6 @@ function BookingPageInner() {
 
   const isFull = capState?.full === true;
 
-  const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.href = "/login";
-  };
-
   const handleSubmit = async (bypassSameAgentDuplicate = false) => {
     if (!agent) return;
     const reqf: (keyof typeof form)[] = [
@@ -576,7 +586,7 @@ function BookingPageInner() {
       "appointmentDate",
     ];
     for (const f of reqf) if (!form[f]?.trim()) {
-      alert("برجاء ملء كل الحقول المطلوبة");
+      alert("Please fill in all required fields");
       return;
     }
     if (!/^[0-9]{10,11}$/.test(form.mobile.trim())) {
@@ -621,8 +631,8 @@ function BookingPageInner() {
           setResult({
             success: true,
             message: customerName
-              ? `تم تسجيل موعد ${customerName} بنجاح.`
-              : "تم تسجيل الموعد بنجاح.",
+              ? `Appointment registered for ${customerName}.`
+              : "Appointment registered successfully.",
           });
         }
         await loadBookings(agent.id);
@@ -630,7 +640,7 @@ function BookingPageInner() {
         await fetchMonthActivity();
         setSelectedAddons([]);
       } else if (!res.ok) {
-        const msg = data?.error || data?.message || "حصل خطأ أثناء الحجز";
+        const msg = data?.error || data?.message || "An error occurred while booking";
         const isDuplicate = Boolean(data?.isDuplicate);
         const isCapacityError = res.status === 409 && !isDuplicate;
         setResult({
@@ -706,7 +716,7 @@ function BookingPageInner() {
         unknown
       >;
       if (!res.ok) {
-        alert(typeof data?.error === "string" ? data.error : "حصل خطأ");
+        alert(typeof data?.error === "string" ? data.error : "Something went wrong");
         return;
       }
       await loadBookings(agent.id);
@@ -747,7 +757,7 @@ function BookingPageInner() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      alert(typeof data?.error === "string" ? data.error : "حصل خطأ");
+      alert(typeof data?.error === "string" ? data.error : "Something went wrong");
       return false;
     }
     await loadBookings(agent.id);
@@ -787,7 +797,7 @@ function BookingPageInner() {
     const req = ["customerName", "customerPhone", "carModel", "service", "appointmentDate"] as const;
     for (const k of req) {
       if (!editForm[k]?.trim()) {
-        alert("برجاء ملء كل الحقول");
+        alert("Please fill in all fields");
         return;
       }
     }
@@ -809,7 +819,7 @@ function BookingPageInner() {
       });
       if (ok) closeEdit();
     } catch {
-      alert("حصل خطأ");
+      alert("Something went wrong");
     }
     setSaveLoading(false);
   };
@@ -819,26 +829,6 @@ function BookingPageInner() {
   };
 
   const salesRep = agent?.name ?? "";
-  const role = (agent?.role ?? "agent").toLowerCase();
-  const isAdmin = role === "admin" || role === "أدمن";
-  const isOps = role === "ops";
-
-  const headerGhostPill: CSSProperties = {
-    padding: "6px 14px",
-    borderRadius: 99,
-    fontSize: "var(--text-xs)",
-    fontWeight: 600,
-    fontFamily: "inherit",
-    background: "var(--surface-elevated)",
-    color: "var(--text-secondary)",
-    textDecoration: "none",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    transition: "all 0.15s ease",
-    border: "none",
-    cursor: "pointer",
-  };
 
   const calendarGridSlots = useMemo(() => {
     const c = calCells(cy, cm);
@@ -871,7 +861,7 @@ function BookingPageInner() {
           }}
         />
         <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
-          جاري التحميل...
+          Loading...
         </p>
       </div>
     );
@@ -904,7 +894,7 @@ function BookingPageInner() {
           }}
         >
           <p style={{ color: "#fca5a5", marginBottom: "var(--space-4)" }}>
-            {agentErr || "لم يتم العثور على الحساب"}
+            {agentErr || "Account not found"}
           </p>
           <button
             type="button"
@@ -920,15 +910,31 @@ function BookingPageInner() {
               fontWeight: 600,
             }}
           >
-            العودة لتسجيل الدخول
+            Back to Sign In
           </button>
         </div>
       </div>
     );
   }
 
+  const withBookingShell = (node: React.ReactNode) => (
+    <AppLayout agent={agent} currentPage="booking">
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        {node}
+      </div>
+    </AppLayout>
+  );
+
   if (bookingAwaitingStatus) {
-    return (
+    return withBookingShell(
       <div
         style={{
           height: "100%",
@@ -963,7 +969,7 @@ function BookingPageInner() {
               color: "var(--success)",
             }}
           >
-            ✅ تم تسجيل الموعد
+            ✅ Booking Created
           </p>
           <p
             style={{
@@ -972,7 +978,7 @@ function BookingPageInner() {
               marginBottom: "var(--space-5)",
             }}
           >
-            ما هي حالة الحجز؟
+            What is the booking status?
           </p>
           <div
             style={{
@@ -1003,7 +1009,7 @@ function BookingPageInner() {
                 boxShadow: "0 4px 14px rgba(21,128,61,0.35)",
               }}
             >
-              مؤكد ✓
+              Confirmed ✓
             </button>
             <button
               type="button"
@@ -1025,7 +1031,7 @@ function BookingPageInner() {
                 boxShadow: "0 4px 14px rgba(180,83,9,0.35)",
               }}
             >
-              {statusHoldLoading ? "…" : "معلق ⏸"}
+              {statusHoldLoading ? "…" : "On Hold ⏸"}
             </button>
           </div>
         </div>
@@ -1079,7 +1085,7 @@ function BookingPageInner() {
         </div>
       );
 
-      return (
+      return withBookingShell(
         <div
           style={{
             position: "fixed",
@@ -1136,7 +1142,7 @@ function BookingPageInner() {
                 margin: "0 0 8px",
               }}
             >
-              تم الحجز بنجاح
+              Booking Confirmed
             </p>
             <div style={{ textAlign: "center", marginBottom: 4 }}>
               {onHold ? (
@@ -1154,7 +1160,7 @@ function BookingPageInner() {
                     color: "var(--warn)",
                   }}
                 >
-                  معلق ⏸
+                  On Hold ⏸
                 </span>
               ) : (
                 <span
@@ -1171,7 +1177,7 @@ function BookingPageInner() {
                     color: "var(--success)",
                   }}
                 >
-                  مؤكد ✓
+                  Confirmed ✓
                 </span>
               )}
             </div>
@@ -1183,30 +1189,30 @@ function BookingPageInner() {
               }}
             />
             <div>
-              {detailRow("العميل", snap.customer_name)}
+              {detailRow("Customer", snap.customer_name)}
               {detailRow(
-                "التليفون",
+                "Phone",
                 snap.customer_phone_raw ?? snap.customer_phone,
                 {
                   direction: "ltr",
                   unicodeBidi: "plaintext",
                 }
               )}
-              {detailRow("الفرع", snap.branchName)}
-              {detailRow("الخدمة", snap.service)}
+              {detailRow("Branch", snap.branchName)}
+              {detailRow("Service", snap.service)}
               {detailRow(
-                "الموعد",
+                "Appointment",
                 formatBookingDateAr(snap.appointment_date)
               )}
               {snap.car_model
-                ? detailRow("نوع المركبة", snap.car_model)
+                ? detailRow("Vehicle", snap.car_model)
                 : null}
               {snap.amount
-                ? detailRow("الإيداع", `${snap.amount} ج.م`)
+                ? detailRow("Deposit (EGP)", `${snap.amount} EGP`)
                 : null}
               {snap.addons && snap.addons.length > 0
                 ? detailRow(
-                    "الإضافات",
+                    "Add-ons",
                     addonNamesJoined(snap.addons),
                     {
                       fontSize: "12px",
@@ -1215,7 +1221,7 @@ function BookingPageInner() {
                   )
                 : null}
               {snap.notes
-                ? detailRow("ملاحظات", snap.notes, {
+                ? detailRow("Notes", snap.notes, {
                     fontSize: "12px",
                     color: "var(--text-secondary)",
                   })
@@ -1235,7 +1241,7 @@ function BookingPageInner() {
                 margin: "0 0 10px",
               }}
             >
-              شارك تفاصيل الحجز مع العميل
+              Share booking details with the customer
             </p>
             <div
               style={{
@@ -1267,7 +1273,7 @@ function BookingPageInner() {
                     bookingCopyTimerRef.current = null;
                   }, 2000);
                 } catch {
-                  alert("تعذر النسخ");
+                  alert("Could not copy");
                 }
               }}
               style={{
@@ -1290,7 +1296,7 @@ function BookingPageInner() {
                 transition: "border-color 0.15s ease, color 0.15s ease",
               }}
             >
-              {bookingCopyDone ? "✓ تم النسخ" : "📋 نسخ تفاصيل الحجز"}
+              {bookingCopyDone ? "Copied ✓" : "📋 Copy for Customer"}
             </button>
             <button
               type="button"
@@ -1315,7 +1321,7 @@ function BookingPageInner() {
                 e.currentTarget.style.background = "transparent";
               }}
             >
-              حجز جديد +
+              + New Booking
             </button>
           </div>
         </div>
@@ -1372,7 +1378,7 @@ function BookingPageInner() {
     );
 
     if (!ok && dup && existingDup && duplicateType === "same_agent") {
-      return (
+      return withBookingShell(
         <div
           style={{
             height: "100%",
@@ -1406,7 +1412,7 @@ function BookingPageInner() {
                 color: "var(--warn)",
               }}
             >
-              ⚠️ تنبيه — نفس العميل
+              ⚠️ Same Customer
             </p>
             <div
               style={{
@@ -1417,11 +1423,11 @@ function BookingPageInner() {
                 marginBottom: "var(--space-4)",
               }}
             >
-              {dupRow("المندوب", existingDup.agentName)}
-              {dupRow("الفرع", existingDup.branchName)}
-              {dupRow("الخدمة", existingDup.service)}
+              {dupRow("Agent", existingDup.agentName)}
+              {dupRow("Branch", existingDup.branchName)}
+              {dupRow("Service", existingDup.service)}
               {dupRow(
-                "التاريخ",
+                "Date",
                 existingDup.date
                   ? formatBookingDateAr(existingDup.date)
                   : ""
@@ -1435,9 +1441,9 @@ function BookingPageInner() {
                 marginBottom: "var(--space-4)",
               }}
             >
-              العميل ده عنده حجز تبعك بالفعل.
+              This customer already has a booking with you.
               <br />
-              هل تريد الحجز لسيارة تانية لنفس العميل؟
+              Book another vehicle for the same customer?
             </p>
             <div
               style={{
@@ -1466,7 +1472,7 @@ function BookingPageInner() {
                   boxShadow: "0 4px 14px rgba(21,128,61,0.35)",
                 }}
               >
-                نعم، حجز سيارة تانية
+                Yes, book another vehicle
               </button>
               <button
                 type="button"
@@ -1485,7 +1491,7 @@ function BookingPageInner() {
                   color: "var(--text-secondary)",
                 }}
               >
-                لا، رجوع
+                No, go back
               </button>
             </div>
           </div>
@@ -1495,8 +1501,9 @@ function BookingPageInner() {
 
     if (!ok && dup && existingDup && duplicateType !== "same_agent") {
       const adminNote =
-        duplicateMessage || "تم تسجيل هذه المحاولة وإبلاغ الإدارة";
-      return (
+        duplicateMessage ||
+          "This attempt has been logged and management notified.";
+      return withBookingShell(
         <div
           style={{
             height: "100%",
@@ -1530,7 +1537,7 @@ function BookingPageInner() {
                 color: "var(--warn)",
               }}
             >
-              ⚠️ رقم محجوز مسبقاً
+              ⚠️ Number Already Booked
             </p>
             <div
               style={{
@@ -1541,11 +1548,11 @@ function BookingPageInner() {
                 marginBottom: "var(--space-4)",
               }}
             >
-              {dupRow("المندوب", existingDup.agentName)}
-              {dupRow("الفرع", existingDup.branchName)}
-              {dupRow("الخدمة", existingDup.service)}
+              {dupRow("Agent", existingDup.agentName)}
+              {dupRow("Branch", existingDup.branchName)}
+              {dupRow("Service", existingDup.service)}
               {dupRow(
-                "التاريخ",
+                "Date",
                 existingDup.date
                   ? formatBookingDateAr(existingDup.date)
                   : ""
@@ -1580,7 +1587,7 @@ function BookingPageInner() {
                 fontFamily: "inherit",
               }}
             >
-              حجز جديد +
+              + New Booking
             </button>
           </div>
         </div>
@@ -1588,7 +1595,7 @@ function BookingPageInner() {
     }
 
     const cap = result.type === "capacity";
-    return (
+    return withBookingShell(
       <div
         style={{
           height: "100%",
@@ -1623,12 +1630,12 @@ function BookingPageInner() {
             }}
           >
             {ok
-              ? "تم الحجز بنجاح"
+              ? "Booking Confirmed"
               : dup
-                ? "حجز مكرر"
+                ? "Duplicate booking"
                 : cap
-                  ? "الفرع ممتلئ"
-                  : "حصل خطأ"}
+                  ? "Branch Full"
+                  : "An error occurred"}
           </p>
           <p
             style={{
@@ -1659,7 +1666,7 @@ function BookingPageInner() {
                     textTransform: "uppercase",
                   }}
                 >
-                  أقرب مواعيد متاحة
+                  Nearest available dates
                 </p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {(result.alternatives as { date: string; available: number }[]).map(
@@ -1684,7 +1691,7 @@ function BookingPageInner() {
                       >
                         {a.date}{" "}
                         <span style={{ color: "var(--text-muted)" }}>
-                          ({a.available} متاح)
+                          ({a.available} available)
                         </span>
                       </button>
                     )
@@ -1709,7 +1716,7 @@ function BookingPageInner() {
               fontFamily: "inherit",
             }}
           >
-            + حجز جديد
+            + New Booking
           </button>
         </div>
       </div>
@@ -1717,7 +1724,7 @@ function BookingPageInner() {
   }
 
   if (submitting) {
-    return (
+    return withBookingShell(
       <div
         style={{
           height: "100%",
@@ -1740,7 +1747,7 @@ function BookingPageInner() {
           }}
         />
         <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
-          جاري التسجيل...
+          Submitting...
         </p>
       </div>
     );
@@ -1778,179 +1785,42 @@ function BookingPageInner() {
   const hideBook = isMobile && mobileTab !== 1;
   const hideForm = isMobile && mobileTab !== 2;
 
-  return (
+  return withBookingShell(
     <div
       className="booking-page-root"
       data-layout={layoutMode}
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "100vh",
+        flex: 1,
+        minHeight: 0,
+        height: "100%",
         background: "var(--surface-deep)",
         overflow: "hidden",
-        paddingBottom: isMobile ? "env(safe-area-inset-bottom, 0px)" : undefined,
       }}
     >
-      <header
-        className={`booking-header ${isMobile ? "booking-header--mobile" : ""}`}
-        dir={isMobile ? "ltr" : "rtl"}
-        style={{
-          height: isMobile ? 48 : 56,
-          flexShrink: 0,
-          display: "grid",
-          gridTemplateColumns: isMobile ? "1fr auto 1fr" : "auto 1fr auto",
-          alignItems: "center",
-          gap: isMobile ? 8 : 16,
-          padding: isMobile ? "0 12px" : "0 24px",
-          background: isMobile
-            ? "rgba(8,12,20,0.95)"
-            : "rgba(13,18,32,0.92)",
-          backdropFilter: "blur(20px)",
-          borderBottom: "1px solid var(--border-subtle)",
-          zIndex: 50,
-        }}
-      >
-        {isMobile ? (
-          <>
+      {isMobile && (
+        <div className="booking-mobile-seg">
+          {(
+            [
+              { id: 0, label: "Calendar" },
+              { id: 1, label: "Bookings" },
+              { id: 2, label: "New" },
+            ] as const
+          ).map((t) => (
             <button
+              key={t.id}
               type="button"
-              className="booking-header-logout"
-              onClick={handleLogout}
-              style={{
-                background: "transparent",
-                border: "none",
-                borderRadius: "var(--radius-sm)",
-                color: "var(--text-secondary)",
-                fontSize: 11,
-                padding: "6px 8px",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                justifySelf: "start",
-              }}
+              className={
+                mobileTab === t.id ? "booking-mobile-seg--on" : undefined
+              }
+              onClick={() => setMobileTab(t.id)}
             >
-              خروج
+              {t.label}
             </button>
-            <div
-              className="booking-header-logo"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo.svg"
-                alt="SupaKoto"
-                style={{
-                  width: 80,
-                  height: "auto",
-                  objectFit: "contain",
-                }}
-              />
-            </div>
-            <span
-              className="booking-header-user"
-              dir="ltr"
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: "var(--text-primary)",
-                justifySelf: "end",
-              }}
-            >
-              {agent.name}
-            </span>
-          </>
-        ) : (
-          <>
-            <div className="booking-header-logo" style={{ display: "flex", alignItems: "center" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo.svg"
-                alt="SupaKoto"
-                style={{ width: 100, height: "auto", objectFit: "contain" }}
-              />
-            </div>
-            <div
-              className="booking-header-nav-desktop"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "var(--space-2)",
-                minWidth: 0,
-              }}
-            >
-              {isOps && (
-                <Link href="/ops" style={headerGhostPill}>
-                  لوحة العمليات
-                </Link>
-              )}
-              {isAdmin && (
-                <>
-                  <Link href="/ops" style={headerGhostPill}>
-                    لوحة العمليات
-                  </Link>
-                  <Link href="/admin" style={headerGhostPill}>
-                    الإدارة
-                  </Link>
-                </>
-              )}
-            </div>
-            <div
-              dir="ltr"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-              }}
-            >
-              <button
-                type="button"
-                onClick={handleLogout}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  borderRadius: "var(--radius-sm)",
-                  color: "var(--text-secondary)",
-                  fontSize: "11px",
-                  padding: "6px 8px",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  transition: "color 0.15s ease",
-                  flexShrink: 0,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "var(--brand-red)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "var(--text-secondary)";
-                }}
-              >
-                خروج
-              </button>
-              <div
-                style={{
-                  width: 1,
-                  height: 18,
-                  background: "var(--border-default)",
-                  flexShrink: 0,
-                }}
-              />
-              <span
-                style={{
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  color: "var(--text-primary)",
-                }}
-              >
-                {agent.name}
-              </span>
-            </div>
-          </>
-        )}
-      </header>
+          ))}
+        </div>
+      )}
 
       <div
         className={`booking-unified-grid booking-tab-panel ${
@@ -1961,10 +1831,12 @@ function BookingPageInner() {
               : "booking-grid-mobile"
         }`}
         style={{
+          flex: 1,
+          minHeight: 0,
           height:
             layoutMode === "mobile"
-              ? "calc(100vh - 48px - 60px - env(safe-area-inset-bottom, 0px))"
-              : "calc(100vh - 56px)",
+              ? "auto"
+              : "100%",
           direction: "ltr",
           ...(layoutMode === "desktop"
             ? {
@@ -1982,7 +1854,7 @@ function BookingPageInner() {
         <div
           className="booking-cal-column"
           style={{
-            direction: "rtl",
+            direction: "ltr",
             display: hideCal ? "none" : "flex",
             flexDirection: "column",
             gap: 12,
@@ -2053,7 +1925,7 @@ function BookingPageInner() {
                   fontSize: "var(--text-base)",
                 }}
               >
-                {AR_MONTHS[cm]} {cy}
+                {EN_MONTHS[cm]} {cy}
               </span>
               <button
                 type="button"
@@ -2215,7 +2087,7 @@ function BookingPageInner() {
                     display: "inline-block",
                   }}
                 />
-                اليوم
+                Today
               </span>
               <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <span
@@ -2227,7 +2099,7 @@ function BookingPageInner() {
                     display: "inline-block",
                   }}
                 />
-                محدد
+                Selected
               </span>
             </div>
           </div>
@@ -2261,7 +2133,7 @@ function BookingPageInner() {
                     textAlign: "center",
                   }}
                 >
-                  اختار يوم لعرض الملخص
+                  Select a day to view summary
                 </p>
               </div>
             ) : (
@@ -2283,7 +2155,7 @@ function BookingPageInner() {
                       fontWeight: 600,
                     }}
                   >
-                    ملخص اليوم
+                    Day Summary
                   </span>
                   <span
                     style={{
@@ -2332,7 +2204,7 @@ function BookingPageInner() {
                     <span
                       style={{ fontSize: "12px", color: "var(--text-secondary)" }}
                     >
-                      مؤكد
+                      Confirmed
                     </span>
                   </span>
                   <span
@@ -2372,7 +2244,7 @@ function BookingPageInner() {
                     <span
                       style={{ fontSize: "12px", color: "var(--text-secondary)" }}
                     >
-                      معلق
+                      On Hold
                     </span>
                   </span>
                   <span
@@ -2412,7 +2284,7 @@ function BookingPageInner() {
                     <span
                       style={{ fontSize: "12px", color: "var(--text-secondary)" }}
                     >
-                      ملغي
+                      Cancelled
                     </span>
                   </span>
                   <span
@@ -2442,7 +2314,7 @@ function BookingPageInner() {
                   <span
                     style={{ fontSize: "12px", color: "var(--text-secondary)" }}
                   >
-                    الإجمالي
+                    Total
                   </span>
                   <span
                     style={{
@@ -2508,7 +2380,7 @@ function BookingPageInner() {
                     maxWidth: 320,
                   }}
                 >
-                  اختار يوم من التقويم لعرض طاقة الفروع
+                  Select a day on the calendar to view branch capacity
                 </p>
               </div>
             ) : (
@@ -2530,7 +2402,7 @@ function BookingPageInner() {
                       textTransform: "uppercase",
                     }}
                   >
-                    طاقة الفروع
+                    Branch Capacity
                   </span>
                   <span
                     style={{
@@ -2586,7 +2458,7 @@ function BookingPageInner() {
                               color: "var(--text-muted)",
                             }}
                           >
-                            جاري...
+                            Loading...
                           </span>
                         </div>
                         <div
@@ -2672,7 +2544,7 @@ function BookingPageInner() {
                                   borderRadius: 99,
                                 }}
                               >
-                                مجمد
+                                Frozen
                               </span>
                               <span
                                 style={{
@@ -2682,7 +2554,7 @@ function BookingPageInner() {
                                 }}
                               >
                                 {s.freezeMessage ||
-                                  "غير متاح"}
+                                  "Unavailable"}
                               </span>
                             </div>
                           )}
@@ -2725,10 +2597,10 @@ function BookingPageInner() {
                               }}
                             >
                               {full
-                                ? "🔴 ممتلئ"
+                                ? "🔴 Full"
                                 : low
-                                  ? `🟡 ${s.available} متبقي`
-                                  : `🟢 ${s.available} متاح`}
+                                  ? `🟡 ${s.available} left`
+                                  : `🟢 ${s.available} available`}
                             </span>
                           </div>
                           <div
@@ -2758,19 +2630,19 @@ function BookingPageInner() {
                             }}
                           >
                             <span style={{ whiteSpace: "nowrap" }}>
-                              📋 {confirmed} حجز مؤكد
+                              📋 {confirmed} confirmed
                             </span>
                             <span style={{ margin: "0 6px", opacity: 0.5 }}>
                               •
                             </span>
                             <span style={{ whiteSpace: "nowrap" }}>
-                              ⏸ {onHold} معلق
+                              ⏸ {onHold} on hold
                             </span>
                             <span style={{ margin: "0 6px", opacity: 0.5 }}>
                               •
                             </span>
                             <span style={{ whiteSpace: "nowrap" }}>
-                              {capTotal} إجمالي الطاقة
+                              {capTotal} total cap
                             </span>
                           </div>
                         </div>
@@ -2786,7 +2658,7 @@ function BookingPageInner() {
                       paddingTop: 8,
                     }}
                   >
-                    تعذر تحميل البيانات
+                    Failed to load data
                   </p>
                 )}
               </>
@@ -2813,7 +2685,7 @@ function BookingPageInner() {
                       lineHeight: 1.6,
                     }}
                   >
-                    اختار يوم من التقويم
+                    Select a day on the calendar
                   </p>
                   <button
                     type="button"
@@ -2831,7 +2703,7 @@ function BookingPageInner() {
                       fontFamily: "inherit",
                     }}
                   >
-                    اذهب للتقويم
+                    Go to calendar
                   </button>
                 </div>
               ) : null}
@@ -2875,7 +2747,7 @@ function BookingPageInner() {
                         textTransform: "uppercase",
                       }}
                     >
-                      {isMobile ? "مواعيدك" : "مواعيدك في هذا اليوم"}
+                      {isMobile ? "Your bookings" : "Your Bookings Today"}
                     </span>
                     {isMobile && (
                       <span
@@ -2923,7 +2795,7 @@ function BookingPageInner() {
                         color: "var(--text-muted)",
                       }}
                     >
-                      مفيش مواعيد ليك
+                      No bookings for this day
                     </p>
                   </div>
                 ) : (
@@ -2953,7 +2825,7 @@ function BookingPageInner() {
                                 letterSpacing: "0.08em",
                               }}
                             >
-                              تعديل الحجز
+                              Edit booking
                             </div>
                             <div
                               className="booking-form-grid-2"
@@ -2965,7 +2837,7 @@ function BookingPageInner() {
                               }}
                             >
                               <div>
-                                <label style={lbl}>اسم العميل *</label>
+                                <label style={lbl}>Customer Name *</label>
                                 <input
                                   className="sk-input"
                                   style={inp}
@@ -2979,7 +2851,7 @@ function BookingPageInner() {
                                 />
                               </div>
                               <div>
-                                <label style={lbl}>رقم التليفون *</label>
+                                <label style={lbl}>Phone *</label>
                                 <input
                                   className={`sk-input${editMobileErr ? " error" : ""}`}
                                   style={{
@@ -3002,7 +2874,7 @@ function BookingPageInner() {
                                 />
                               </div>
                               <div>
-                                <label style={lbl}>الموعد *</label>
+                                <label style={lbl}>Date *</label>
                                 <input
                                   className="sk-input"
                                   style={inp}
@@ -3018,7 +2890,7 @@ function BookingPageInner() {
                                 />
                               </div>
                               <div>
-                                <label style={lbl}>الخدمة *</label>
+                                <label style={lbl}>Service *</label>
                                 <select
                                   className="sk-input"
                                   style={inp}
@@ -3030,7 +2902,7 @@ function BookingPageInner() {
                                     }))
                                   }
                                 >
-                                  <option value="">— اختار —</option>
+                                  <option value="">— Select —</option>
                                   {SERVICES.map((s) => (
                                     <option key={s} value={s}>
                                       {s}
@@ -3040,7 +2912,7 @@ function BookingPageInner() {
                               </div>
                             </div>
                             <div style={{ marginBottom: "var(--space-3)" }}>
-                              <label style={lbl}>نوع المركبة *</label>
+                              <label style={lbl}>Vehicle *</label>
                               <input
                                 className="sk-input"
                                 style={inp}
@@ -3063,7 +2935,7 @@ function BookingPageInner() {
                               }}
                             >
                               <div>
-                                <label style={lbl}>المبلغ</label>
+                                <label style={lbl}>Deposit</label>
                                 <input
                                   className="sk-input"
                                   style={inp}
@@ -3086,7 +2958,7 @@ function BookingPageInner() {
                                           color: "var(--text-muted)",
                                         }}
                                       >
-                                        جاري...
+                                        Loading...
                                       </span>
                                     ) : editCap ? (
                                       <span
@@ -3105,10 +2977,10 @@ function BookingPageInner() {
                                         }}
                                       >
                                         {editCap.freezeBlocked
-                                          ? "مجمد"
+                                          ? "Frozen"
                                           : editCap.full
-                                            ? "ممتلئ"
-                                            : `${editCap.available} متاح`}
+                                            ? "Full"
+                                            : `${editCap.available} avail.`}
                                       </span>
                                     ) : null}
                                   </div>
@@ -3116,7 +2988,7 @@ function BookingPageInner() {
                               </div>
                             </div>
                             <div style={{ marginBottom: "var(--space-3)" }}>
-                              <label style={lbl}>ملاحظات</label>
+                              <label style={lbl}>Notes</label>
                               <textarea
                                 className="sk-input"
                                 style={{
@@ -3155,7 +3027,7 @@ function BookingPageInner() {
                                 marginBottom: "var(--space-2)",
                               }}
                             >
-                              {saveLoading ? "جاري..." : "حفظ"}
+                              {saveLoading ? "Loading..." : "Save"}
                             </button>
                             <button
                               type="button"
@@ -3171,7 +3043,7 @@ function BookingPageInner() {
                                 fontFamily: "inherit",
                               }}
                             >
-                              إلغاء التعديل
+                              Cancel edit
                             </button>
                           </div>
                         ) : (
@@ -3261,7 +3133,7 @@ function BookingPageInner() {
                                   marginBottom: 8,
                                 }}
                               >
-                                الإيداع: {b.amount} ج.م
+                                Deposit: {b.amount} EGP
                               </div>
                             )}
                             {b.addons && b.addons.length > 0 && (
@@ -3272,7 +3144,7 @@ function BookingPageInner() {
                                   marginBottom: 8,
                                 }}
                               >
-                                الإضافات: {addonNamesJoined(b.addons)}
+                                Add-ons: {addonNamesJoined(b.addons)}
                               </div>
                             )}
                             {b.notes && (
@@ -3321,7 +3193,7 @@ function BookingPageInner() {
                                       onClick={() => openEdit(b)}
                                       style={btnPill()}
                                     >
-                                      تعديل
+                                      Edit
                                     </button>
                                     {(st === "CONFIRMED" ||
                                       st === "ON-HOLD") && (
@@ -3330,7 +3202,7 @@ function BookingPageInner() {
                                         onClick={() => {
                                           if (
                                             confirm(
-                                              "متأكد من إلغاء الحجز؟"
+                                              "Cancel this booking?"
                                             )
                                           )
                                             void patchStatus(
@@ -3345,7 +3217,7 @@ function BookingPageInner() {
                                           color: "#fca5a5",
                                         }}
                                       >
-                                        إلغاء
+                                        Cancel
                                       </button>
                                     )}
                                     {(st === "CANCELLED" ||
@@ -3366,7 +3238,7 @@ function BookingPageInner() {
                                           color: "var(--success)",
                                         }}
                                       >
-                                        تأكيد
+                                        Confirm
                                       </button>
                                     )}
                                     {st === "CONFIRMED" && (
@@ -3413,7 +3285,7 @@ function BookingPageInner() {
                                         dayListCopyTimerRef.current = null;
                                       }, 2000);
                                   } catch {
-                                    alert("تعذر النسخ");
+                                    alert("Could not copy");
                                   }
                                 }}
                                 style={{
@@ -3438,8 +3310,8 @@ function BookingPageInner() {
                                 }}
                               >
                                 {dayListCopyBookingId === b.id
-                                  ? "✓ تم"
-                                  : "📋 نسخ"}
+                                  ? "✓ Copied"
+                                  : "📋 Copy"}
                               </button>
                             </div>
                           </>
@@ -3455,7 +3327,7 @@ function BookingPageInner() {
         <div
           className="booking-form-column"
           style={{
-            direction: "rtl",
+            direction: "ltr",
             display: hideForm ? "none" : "flex",
             flexDirection: "column",
           }}
@@ -3488,7 +3360,7 @@ function BookingPageInner() {
                   marginBottom: "var(--space-2)",
                 }}
               >
-                حجز موعد جديد
+                New booking
               </h1>
               <p
                 style={{
@@ -3501,7 +3373,7 @@ function BookingPageInner() {
               </p>
             </div>
 
-            <SectionDivider>بيانات العميل</SectionDivider>
+            <SectionDivider>Customer Info</SectionDivider>
             <div
               className="booking-form-grid-2"
               style={{
@@ -3513,14 +3385,14 @@ function BookingPageInner() {
             >
               <div>
                 <label style={lbl}>
-                  العميل <span style={{ color: "var(--brand-red)" }}>*</span>
+                  Customer Name <span style={{ color: "var(--brand-red)" }}>*</span>
                 </label>
                 <input
                   className="sk-input"
                   style={{
                     ...inp,
                   }}
-                  placeholder="اسم العميل"
+                  placeholder="Customer name"
                   value={form.customer}
                   onChange={set("customer")}
                 />
@@ -3559,13 +3431,13 @@ function BookingPageInner() {
                       display: "block",
                     }}
                   >
-                    10 أو 11 رقم
+                    10 or 11 digits
                   </span>
                 )}
               </div>
             </div>
 
-            <SectionDivider>تفاصيل الحجز</SectionDivider>
+            <SectionDivider>Booking details</SectionDivider>
             <div
               className="booking-form-grid-2"
               style={{
@@ -3577,7 +3449,7 @@ function BookingPageInner() {
             >
               <div>
                 <label style={lbl}>
-                  الفرع{" "}
+                  Branch{" "}
                   <span style={{ color: "var(--brand-red)" }}>*</span>
                 </label>
                 <select
@@ -3586,7 +3458,7 @@ function BookingPageInner() {
                   value={form.branch}
                   onChange={set("branch")}
                 >
-                  <option value="">— اختار —</option>
+                  <option value="">— Select —</option>
                   {branches.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.name}
@@ -3596,7 +3468,7 @@ function BookingPageInner() {
               </div>
               <div>
                 <label style={lbl}>
-                  الموعد{" "}
+                  Date{" "}
                   <span style={{ color: "var(--brand-red)" }}>*</span>
                 </label>
                 <input
@@ -3633,7 +3505,7 @@ function BookingPageInner() {
                         display: "inline-block",
                       }}
                     />
-                    جاري التحقق...
+                    Verifying...
                   </span>
                 ) : (
                   capState && <CapBadge cap={capState} />
@@ -3641,10 +3513,10 @@ function BookingPageInner() {
               </div>
             )}
 
-            <SectionDivider>المركبة والخدمة</SectionDivider>
+            <SectionDivider>Vehicle & service</SectionDivider>
             <div style={{ marginBottom: 12 }}>
               <label style={lbl}>
-                نوع المركبة{" "}
+                Vehicle{" "}
                 <span style={{ color: "var(--brand-red)" }}>*</span>
               </label>
               <input
@@ -3666,7 +3538,7 @@ function BookingPageInner() {
             >
               <div>
                 <label style={lbl}>
-                  الخدمة{" "}
+                  Service{" "}
                   <span style={{ color: "var(--brand-red)" }}>*</span>
                 </label>
                 <select
@@ -3675,7 +3547,7 @@ function BookingPageInner() {
                   value={form.service}
                   onChange={set("service")}
                 >
-                  <option value="">— اختار —</option>
+                  <option value="">— Select —</option>
                   {SERVICES.map((s) => (
                     <option key={s} value={s}>
                       {s}
@@ -3684,7 +3556,7 @@ function BookingPageInner() {
                 </select>
               </div>
               <div>
-                <label style={lbl}>الإيداع (EGP)</label>
+                <label style={lbl}>Deposit (EGP)</label>
                 <input
                   className="sk-input"
                   style={inp}
@@ -3695,7 +3567,7 @@ function BookingPageInner() {
               </div>
             </div>
             <div>
-              <label style={lbl}>ملاحظات</label>
+              <label style={lbl}>Notes</label>
               <textarea
                 className="sk-input"
                 style={{
@@ -3704,13 +3576,13 @@ function BookingPageInner() {
                   height: "auto",
                   resize: "vertical",
                 }}
-                placeholder="أي ملاحظات..."
+                placeholder="Additional notes..."
                 value={form.notes}
                 onChange={set("notes")}
               />
             </div>
 
-            <SectionDivider>إضافات</SectionDivider>
+            <SectionDivider>Add-ons</SectionDivider>
             <div
               className="booking-addons-grid"
               style={{
@@ -3785,7 +3657,7 @@ function BookingPageInner() {
                         flexShrink: 0,
                       }}
                     >
-                      {addon.price.toLocaleString("ar-EG")} ج.م
+                      {addon.price.toLocaleString("en-US")} EGP
                     </span>
                   </div>
                 );
@@ -3801,8 +3673,8 @@ function BookingPageInner() {
                   marginBottom: 0,
                 }}
               >
-                إجمالي الإضافات: {selectedAddonsTotal.toLocaleString("ar-EG")}{" "}
-                ج.م
+                Add-ons total: {selectedAddonsTotal.toLocaleString("en-US")}{" "}
+                EGP
               </p>
             )}
 
@@ -3824,8 +3696,8 @@ function BookingPageInner() {
                   }}
                 >
                   {capState?.freezeBlocked
-                    ? `⚠ ${capState?.freezeMessage || "غير متاح"}`
-                    : "🔴 الفرع ممتلئ — غيّر التاريخ أو الفرع"}
+                    ? `⚠ ${capState?.freezeMessage || "Unavailable"}`
+                    : "🔴 Branch full — change the date or branch"}
                 </div>
               ) : (
                 <button
@@ -3866,38 +3738,13 @@ function BookingPageInner() {
                     (e.currentTarget.style.transform = "translateY(-1px)")
                   }
                 >
-                  تسجيل الموعد
+                  Book Appointment →
                 </button>
               )}
             </div>
           </div>
         </div>
       </div>
-
-      {isMobile && (
-        <nav className="bottom-tab-bar bottom-tab-bar-entrance">
-          {(
-            [
-              { id: 0, icon: "📅", label: "التقويم" },
-              { id: 1, icon: "📋", label: "مواعيدي" },
-              { id: 2, icon: "➕", label: "حجز جديد" },
-            ] as const
-          ).map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className={`bottom-tab-btn${mobileTab === t.id ? " bottom-tab-btn--active" : ""}`}
-              onClick={() => setMobileTab(t.id)}
-            >
-              {mobileTab === t.id && (
-                <span className="bottom-tab-indicator" aria-hidden />
-              )}
-              <span className="bottom-tab-icon">{t.icon}</span>
-              <span className="bottom-tab-label">{t.label}</span>
-            </button>
-          ))}
-        </nav>
-      )}
     </div>
   );
 }
@@ -3933,7 +3780,7 @@ function StatusMini({ status }: { status: string }) {
           color: "var(--success)",
         }}
       >
-        مؤكد
+        Confirmed
       </span>
     );
   if (s === "CANCELLED")
@@ -3949,7 +3796,7 @@ function StatusMini({ status }: { status: string }) {
           color: "var(--text-muted)",
         }}
       >
-        ملغي
+        Cancelled
       </span>
     );
   if (s === "ON-HOLD")
@@ -3965,7 +3812,7 @@ function StatusMini({ status }: { status: string }) {
           color: "var(--warn)",
         }}
       >
-        ON-HOLD
+        On Hold
       </span>
     );
   return (
@@ -4005,10 +3852,10 @@ function CapBadge({ cap }: { cap: CapState }) {
         }}
       >
         {full
-          ? `ممتلئ ${cap.booked}/${cap.capacity}`
+          ? `Full ${cap.booked}/${cap.capacity}`
           : low
-            ? `متبقي ${cap.available} (${cap.booked}/${cap.capacity})`
-            : `متاح ${cap.available} (${cap.booked}/${cap.capacity})`}
+            ? `${cap.available} left (${cap.booked}/${cap.capacity})`
+            : `${cap.available} available (${cap.booked}/${cap.capacity})`}
       </span>
       {frozen && (
         <span
@@ -4018,7 +3865,7 @@ function CapBadge({ cap }: { cap: CapState }) {
             lineHeight: 1.5,
           }}
         >
-          {cap.freezeMessage || "مجمد"}
+          {cap.freezeMessage || "Frozen"}
         </span>
       )}
     </div>

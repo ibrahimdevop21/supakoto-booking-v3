@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import AppLayout from "@/components/AppLayout";
 import {
   useCallback,
   useEffect,
@@ -14,37 +14,37 @@ import {
 
 const STATUS_MAP = {
   WAITING: {
-    ar: "انتظار",
+    label: "Waiting",
     color: "var(--text-muted)",
     bg: "rgba(255,255,255,0.05)",
   },
   RECEIVED: {
-    ar: "استلام",
+    label: "Received",
     color: "#60a5fa",
     bg: "rgba(96,165,250,0.10)",
   },
   IN_PROGRESS: {
-    ar: "تشغيل",
+    label: "In Progress",
     color: "var(--warn)",
     bg: "var(--warn-bg)",
   },
   CHECK: {
-    ar: "فحص جودة",
+    label: "Quality Check",
     color: "#a78bfa",
     bg: "rgba(167,139,250,0.10)",
   },
   WAITING_DELIVERY: {
-    ar: "انتظار تسليم",
+    label: "Ready for Pickup",
     color: "#34d399",
     bg: "rgba(52,211,153,0.10)",
   },
   DELIVERED: {
-    ar: "تم التسليم",
+    label: "Delivered",
     color: "var(--success)",
     bg: "var(--success-bg)",
   },
   DOUBLE_CHECK: {
-    ar: "دبل اتشيك",
+    label: "Double Check",
     color: "var(--brand-red)",
     bg: "var(--error-bg)",
   },
@@ -245,32 +245,6 @@ export default function OpsPage() {
   const isAdmin = role === "admin" || role === "أدمن";
   const isOps = role === "ops";
 
-  const headerGhostPill: CSSProperties = {
-    paddingTop: "6px",
-    paddingRight: "14px",
-    paddingBottom: "6px",
-    paddingLeft: "14px",
-    borderRadius: 99,
-    fontSize: "var(--text-xs)",
-    fontWeight: 600,
-    fontFamily: "inherit",
-    background: "var(--surface-elevated)",
-    color: "var(--text-secondary)",
-    textDecoration: "none",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    transition: "all 0.15s ease",
-    border: "none",
-    cursor: "pointer",
-  };
-
-  const headerGhostPillActive: CSSProperties = {
-    ...headerGhostPill,
-    background: "var(--brand-red)",
-    color: "#fff",
-  };
-
   const inp: CSSProperties = {
     width: "100%",
     minHeight: 36,
@@ -358,11 +332,6 @@ export default function OpsPage() {
     void fetchTechnicians();
   }, [agent, fetchTechnicians]);
 
-  const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.href = "/login";
-  };
-
   const patchJob = async (id: string, body: Record<string, unknown>) => {
     const r = await fetch(`/api/workshop/jobs/${id}`, {
       method: "PATCH",
@@ -372,7 +341,7 @@ export default function OpsPage() {
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
       alert(
-        typeof err.error === "string" ? err.error : "تعذر تحديث البطاقة"
+        typeof err.error === "string" ? err.error : "Could not update job card"
       );
       return;
     }
@@ -381,9 +350,9 @@ export default function OpsPage() {
   };
 
   const branchName = useMemo(() => {
-    if (!selectedBranch) return "كل الفروع";
+    if (!selectedBranch) return "All Branches";
     return (
-      branches.find((b) => b.id === selectedBranch)?.name ?? "الفرع"
+      branches.find((b) => b.id === selectedBranch)?.name ?? "Branch"
     );
   }, [branches, selectedBranch]);
 
@@ -463,7 +432,7 @@ export default function OpsPage() {
         const techNames = techIds(j)
           .map((id) => techById.get(id)?.name ?? id)
           .join("، ");
-        const st = STATUS_MAP[j.status as JobStatus]?.ar ?? j.status;
+        const st = STATUS_MAP[j.status as JobStatus]?.label ?? j.status;
         const price = parseMoney(j.actual_amount);
         return `<tr>
           <td>${i + 1}</td>
@@ -477,28 +446,28 @@ export default function OpsPage() {
         </tr>`;
       })
       .join("");
-    const title = `تقرير تشغيل ${escapeHtml(branchName)} — ${escapeHtml(
+    const title = `Operations Report — ${escapeHtml(branchName)} — ${escapeHtml(
       formatArDate(selectedDate)
     )}`;
-    w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head>
+    w.document.write(`<!DOCTYPE html><html dir="ltr" lang="en"><head>
       <meta charset="utf-8"/><title>${title}</title>
       <style>
-        body { font-family: Cairo, sans-serif; padding: 24px; color: #111; }
+        body { font-family: Inter, Cairo, sans-serif; padding: 24px; color: #111; }
         table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: right; }
+        th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
         th { background: #f3f3f3; }
         h1 { font-size: 18px; margin-bottom: 16px; }
         .foot { margin-top: 16px; font-size: 13px; }
       </style></head><body>
       <h1>${title}</h1>
       <table><thead><tr>
-        <th>#</th><th>المركبة</th><th>العميل</th><th>الخدمة</th><th>الفنيين</th><th>الحالة</th><th>السعر</th><th>ملاحظات</th>
+        <th>#</th><th>Vehicle</th><th>Customer</th><th>Service</th><th>Technicians</th><th>Status</th><th>Price</th><th>Notes</th>
       </tr></thead><tbody>${rows}</tbody></table>
       <div class="foot">
-        إجمالي السيارات: ${jobs.length} |
-        تم التسليم: ${delivered} |
-        في التشغيل: ${inProgress} |
-        إجمالي المبالغ: ${footerSum}
+        Total Vehicles: ${jobs.length} |
+        Delivered: ${delivered} |
+        In Progress: ${inProgress} |
+        Total Amount: ${footerSum}
       </div>
       <script>setTimeout(function(){ window.print(); }, 500);</script>
       </body></html>`);
@@ -539,10 +508,10 @@ export default function OpsPage() {
 
     switch (job.status) {
       case "WAITING":
-        return next("استلم ✓", { status: "RECEIVED" }, "#15803d");
+        return next("Receive ✓", { status: "RECEIVED" }, "#15803d");
       case "RECEIVED":
         return next(
-          "ابدأ التشغيل ▶",
+          "Start Work ▶",
           {},
           "#b45309",
           (e) => {
@@ -551,11 +520,11 @@ export default function OpsPage() {
           }
         );
       case "IN_PROGRESS":
-        return next("فحص جودة 🔍", { status: "CHECK" }, "#7c3aed");
+        return next("Quality Check 🔍", { status: "CHECK" }, "#7c3aed");
       case "CHECK":
-        return next("جاهز للتسليم ✓", { status: "WAITING_DELIVERY" }, "#059669");
+        return next("Ready for Pickup ✓", { status: "WAITING_DELIVERY" }, "#059669");
       case "WAITING_DELIVERY":
-        return next("تسليم نهائي 🚗", { status: "DELIVERED" }, "#2563eb");
+        return next("Final Delivery 🚗", { status: "DELIVERED" }, "#2563eb");
       case "DELIVERED":
         return (
           <button
@@ -576,11 +545,11 @@ export default function OpsPage() {
               color: "#fff",
             }}
           >
-            حدد دبل اتشيك 📅
+            Schedule Double Check 📅
           </button>
         );
       case "DOUBLE_CHECK":
-        return next("اكتمل ✓", { status: "DELIVERED" }, "#15803d");
+        return next("Complete ✓", { status: "DELIVERED" }, "#15803d");
       default:
         return null;
     }
@@ -620,7 +589,7 @@ export default function OpsPage() {
           <span style={{ fontSize: 14, fontWeight: 700 }}>
             {job.car_model ?? "—"}
           </span>
-          <span style={statusBadgeStyle(job.status)}>{meta?.ar ?? job.status}</span>
+          <span style={statusBadgeStyle(job.status)}>{meta?.label ?? job.status}</span>
         </div>
         <div
           style={{
@@ -650,13 +619,13 @@ export default function OpsPage() {
               marginBottom: 8,
             }}
           >
-            المندوب: {agentName}
+            Agent: {agentName}
           </div>
         )}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
           {assignedTechIds.length === 0 ? (
             <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-              غير معين
+              Unassigned
             </span>
           ) : (
             assignedTechIds.map((id) => {
@@ -693,7 +662,7 @@ export default function OpsPage() {
               marginBottom: 6,
             }}
           >
-            ⏱ وقت الاستلام: {formatTime(job.received_at)}
+            ⏱ Received at: {formatTime(job.received_at)}
           </div>
         )}
         {job.notes && (
@@ -741,7 +710,7 @@ export default function OpsPage() {
               fontFamily: "inherit",
             }}
           >
-            تعديل
+            Edit
           </button>
         </div>
       </div>
@@ -819,7 +788,7 @@ export default function OpsPage() {
           background: "var(--surface-deep)",
         }}
       >
-        <p style={{ color: "var(--text-muted)" }}>جاري التحميل...</p>
+        <p style={{ color: "var(--text-muted)" }}>Loading...</p>
       </div>
     );
   }
@@ -829,131 +798,19 @@ export default function OpsPage() {
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        background: "var(--surface-deep)",
-        overflow: "hidden",
-        direction: "rtl",
-      }}
-    >
-      <header
+    <AppLayout agent={agent} currentPage="ops">
+      <div
         style={{
-          height: isMobile ? 48 : 56,
-          flexShrink: 0,
-          display: "grid",
-          gridTemplateColumns: isMobile ? "1fr auto 1fr" : "auto 1fr auto",
-          alignItems: "center",
-          gap: isMobile ? 8 : 16,
-          paddingTop: 0,
-          paddingRight: isMobile ? 12 : 24,
-          paddingBottom: 0,
-          paddingLeft: isMobile ? 12 : 24,
-          background: "rgba(13,18,32,0.92)",
-          backdropFilter: "blur(20px)",
-          borderBottom: "1px solid var(--border-subtle)",
-          zIndex: 50,
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: 0,
+          height: "100%",
+          background: "var(--surface-deep)",
+          overflow: "hidden",
+          direction: "ltr",
         }}
       >
-        {!isMobile ? (
-          <>
-            <div style={{ display: "flex", alignItems: "center" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo.svg"
-                alt="SupaKoto"
-                style={{ width: 100, height: "auto", objectFit: "contain" }}
-              />
-            </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "var(--space-2)",
-                minWidth: 0,
-              }}
-            >
-              <Link href="/booking" style={headerGhostPill}>
-                الحجوزات
-              </Link>
-              <span style={headerGhostPillActive}>لوحة العمليات</span>
-              {isAdmin && (
-                <Link href="/admin" style={headerGhostPill}>
-                  الإدارة
-                </Link>
-              )}
-            </div>
-            <div
-              dir="ltr"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-              }}
-            >
-              <button
-                type="button"
-                onClick={handleLogout}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  borderRadius: "var(--radius-sm)",
-                  color: "var(--text-secondary)",
-                  fontSize: "11px",
-                  padding: "6px 8px",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                خروج
-              </button>
-              <span
-                style={{
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  color: "var(--text-primary)",
-                }}
-              >
-                {agent.name}
-              </span>
-            </div>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={handleLogout}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "var(--text-secondary)",
-                fontSize: 11,
-                cursor: "pointer",
-                justifySelf: "start",
-              }}
-            >
-              خروج
-            </button>
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.svg" alt="" style={{ width: 80 }} />
-            </div>
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                justifySelf: "end",
-              }}
-            >
-              {agent.name}
-            </span>
-          </>
-        )}
-      </header>
-
       <div
         style={{
           background: "var(--surface)",
@@ -987,7 +844,7 @@ export default function OpsPage() {
               onChange={(e) => setSelectedBranch(e.target.value)}
               style={{ ...inp, width: 200, height: 36 }}
             >
-              <option value="">كل الفروع</option>
+              <option value="">All Branches</option>
               {branches.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.name}
@@ -1029,7 +886,7 @@ export default function OpsPage() {
                 fontFamily: "inherit",
               }}
             >
-              {pendingBookings.length} حجز بدون بطاقة ←
+              {pendingBookings.length} Bookings without job card ←
             </button>
           )}
         </div>
@@ -1050,7 +907,7 @@ export default function OpsPage() {
                 fontFamily: "inherit",
                 fontSize: 14,
               }}
-              title="كانبان"
+              title="Kanban"
             >
               ⊞
             </button>
@@ -1069,7 +926,7 @@ export default function OpsPage() {
                 fontFamily: "inherit",
                 fontSize: 14,
               }}
-              title="جدول"
+              title="Table"
             >
               ≡
             </button>
@@ -1090,7 +947,7 @@ export default function OpsPage() {
               fontFamily: "inherit",
             }}
           >
-            ➕ إضافة سيارة
+            ➕ Add Vehicle
           </button>
           <button
             type="button"
@@ -1108,7 +965,7 @@ export default function OpsPage() {
               fontFamily: "inherit",
             }}
           >
-            🖨 طباعة
+            🖨 Print
           </button>
         </div>
       </div>
@@ -1126,11 +983,11 @@ export default function OpsPage() {
         }}
       >
         {[
-          { label: "إجمالي اليوم", n: kpis.total, c: "var(--text-primary)" },
-          { label: "انتظار", n: kpis.waiting, c: "var(--text-muted)" },
-          { label: "تشغيل", n: kpis.running, c: "var(--warn)" },
-          { label: "جاهز للتسليم", n: kpis.ready, c: "var(--success)" },
-          { label: "تم التسليم", n: kpis.done, c: "#60a5fa" },
+          { label: "Total Today", n: kpis.total, c: "var(--text-primary)" },
+          { label: "Waiting", n: kpis.waiting, c: "var(--text-muted)" },
+          { label: "In Progress", n: kpis.running, c: "var(--warn)" },
+          { label: "Ready", n: kpis.ready, c: "var(--success)" },
+          { label: "Delivered", n: kpis.done, c: "#60a5fa" },
         ].map((k) => (
           <div
             key={k.label}
@@ -1178,22 +1035,22 @@ export default function OpsPage() {
             }}
           >
             <KanbanColumn
-              title="استلام"
+              title="Intake"
               barColor="#60a5fa"
               list={kanbanBuckets.col1}
             />
             <KanbanColumn
-              title="تشغيل"
+              title="In Progress"
               barColor="var(--warn)"
               list={kanbanBuckets.col2}
             />
             <KanbanColumn
-              title="تسليم"
+              title="Delivery"
               barColor="#34d399"
               list={kanbanBuckets.col3}
             />
             <KanbanColumn
-              title="منتهي"
+              title="Done"
               barColor="var(--success)"
               list={kanbanBuckets.col4}
             />
@@ -1209,11 +1066,11 @@ export default function OpsPage() {
             >
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ padding: 8, textAlign: "right" }}>المركبة</th>
-                  <th style={{ padding: 8, textAlign: "right" }}>العميل</th>
-                  <th style={{ padding: 8, textAlign: "left" }}>التليفون</th>
-                  <th style={{ padding: 8, textAlign: "right" }}>الخدمة</th>
-                  <th style={{ padding: 8, textAlign: "right" }}>الفنيين</th>
+                  <th style={{ padding: 8, textAlign: "left" }}>Vehicle</th>
+                  <th style={{ padding: 8, textAlign: "left" }}>Customer</th>
+                  <th style={{ padding: 8, textAlign: "left" }}>Phone</th>
+                  <th style={{ padding: 8, textAlign: "left" }}>Service</th>
+                  <th style={{ padding: 8, textAlign: "left" }}>Technicians</th>
                   <th
                     style={{ padding: 8, textAlign: "right", cursor: "pointer" }}
                     onClick={() =>
@@ -1226,7 +1083,7 @@ export default function OpsPage() {
                       }))
                     }
                   >
-                    الحالة {tableSort.key === "status" ? (tableSort.dir === "asc" ? "↑" : "↓") : ""}
+                    Status {tableSort.key === "status" ? (tableSort.dir === "asc" ? "↑" : "↓") : ""}
                   </th>
                   <th
                     style={{ padding: 8, textAlign: "right", cursor: "pointer" }}
@@ -1240,11 +1097,11 @@ export default function OpsPage() {
                       }))
                     }
                   >
-                    الفرع {tableSort.key === "branch" ? (tableSort.dir === "asc" ? "↑" : "↓") : ""}
+                    Branch {tableSort.key === "branch" ? (tableSort.dir === "asc" ? "↑" : "↓") : ""}
                   </th>
-                  <th style={{ padding: 8, textAlign: "right" }}>السعر</th>
-                  <th style={{ padding: 8, textAlign: "right" }}>ملاحظات</th>
-                  <th style={{ padding: 8, textAlign: "right" }}>إجراء</th>
+                  <th style={{ padding: 8, textAlign: "left" }}>Price</th>
+                  <th style={{ padding: 8, textAlign: "left" }}>Notes</th>
+                  <th style={{ padding: 8, textAlign: "left" }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -1272,7 +1129,7 @@ export default function OpsPage() {
                     </td>
                     <td style={{ padding: 8 }}>
                       <span style={statusBadgeStyle(job.status)}>
-                        {STATUS_MAP[job.status as JobStatus]?.ar ?? job.status}
+                        {STATUS_MAP[job.status as JobStatus]?.label ?? job.status}
                       </span>
                     </td>
                     <td style={{ padding: 8 }}>
@@ -1310,10 +1167,10 @@ export default function OpsPage() {
                       color: "var(--text-secondary)",
                     }}
                   >
-                    إجمالي السيارات: {jobs.length}
+                    Total Vehicles: {jobs.length}
                   </td>
                   <td style={{ padding: 12, fontWeight: 700 }}>
-                    إجمالي المبالغ: {footerSum}
+                    Total Amount: {footerSum}
                   </td>
                   <td colSpan={2} />
                 </tr>
@@ -1396,6 +1253,7 @@ export default function OpsPage() {
       )}
 
     </div>
+    </AppLayout>
   );
 }
 
@@ -1452,7 +1310,7 @@ function AddJobModal({
 
   const submit = async () => {
     if (!branchId || !customerName.trim() || !phone.trim()) {
-      alert("أكمل الحقول المطلوبة");
+      alert("Please fill in all required fields");
       return;
     }
     setSaving(true);
@@ -1477,7 +1335,7 @@ function AddJobModal({
       });
       if (!r.ok) {
         const e = await r.json().catch(() => ({}));
-        alert(typeof e.error === "string" ? e.error : "فشل الحفظ");
+        alert(typeof e.error === "string" ? e.error : "Save failed");
         return;
       }
       await onSaved();
@@ -1487,18 +1345,18 @@ function AddJobModal({
   };
 
   return (
-    <Modal title="إضافة سيارة جديدة" onClose={onClose}>
+    <Modal title="Add New Vehicle" onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div>
-          <label style={{ fontSize: 10, color: "var(--text-muted)" }}>نوع العمل</label>
+          <label style={{ fontSize: 10, color: "var(--text-muted)" }}>Job Type</label>
           <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
             {(
               [
-                ["تركيب", "installation"],
-                ["صيانة", "maintenance"],
-                ["دبل اتشيك", "double_check"],
+                ["Installation", "installation"],
+                ["Maintenance", "maintenance"],
+                ["Double Check", "double_check"],
               ] as const
-            ).map(([ar, val]) => (
+            ).map(([label, val]) => (
               <label key={val} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
                 <input
                   type="radio"
@@ -1506,24 +1364,24 @@ function AddJobModal({
                   checked={jobType === val}
                   onChange={() => setJobType(val)}
                 />
-                {ar}
+                {label}
               </label>
             ))}
           </div>
         </div>
-        <Field label="اسم العميل">
+        <Field label="Customer Name">
           <input className="sk-input" style={inp} value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
         </Field>
-        <Field label="تليفون">
+        <Field label="Phone">
           <input className="sk-input" style={inp} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </Field>
-        <Field label="المركبة">
+        <Field label="Vehicle">
           <input className="sk-input" style={inp} value={car} onChange={(e) => setCar(e.target.value)} />
         </Field>
-        <Field label="الخدمة">
+        <Field label="Service">
           <input className="sk-input" style={inp} value={service} onChange={(e) => setService(e.target.value)} />
         </Field>
-        <Field label="الفرع">
+        <Field label="Branch">
           <select
             className="sk-input"
             style={inp}
@@ -1537,16 +1395,16 @@ function AddJobModal({
             ))}
           </select>
         </Field>
-        <Field label="التاريخ">
+        <Field label="Date">
           <input className="sk-input" style={inp} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </Field>
-        <Field label="السعر">
+        <Field label="Price">
           <input className="sk-input" style={inp} value={price} onChange={(e) => setPrice(e.target.value)} />
         </Field>
-        <Field label="ملاحظات">
+        <Field label="Notes">
           <textarea className="sk-input" style={{ ...inp, minHeight: 72 }} value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
         </Field>
-        <Field label="الفنيين">
+        <Field label="Technicians">
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {technicians.map((t) => {
               const on = techSel.includes(t.id);
@@ -1581,9 +1439,9 @@ function AddJobModal({
           </div>
         </Field>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
-          <button type="button" onClick={onClose} style={ghostBtn}>إلغاء</button>
+          <button type="button" onClick={onClose} style={ghostBtn}>Cancel</button>
           <button type="button" disabled={saving} onClick={() => void submit()} style={primaryBtn}>
-            {saving ? "…" : "حفظ"}
+            {saving ? "…" : "Save"}
           </button>
         </div>
       </div>
@@ -1625,17 +1483,17 @@ function CreateFromBookingModal({
     });
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
-      alert(typeof e.error === "string" ? e.error : "فشل الإنشاء");
+      alert(typeof e.error === "string" ? e.error : "Create failed");
       return;
     }
     await onCreated(b.id);
   };
 
   return (
-    <Modal title="حجوزات اليوم بدون بطاقة" onClose={onClose}>
+    <Modal title="Today's Bookings Without Job Card" onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: "70vh", overflowY: "auto" }}>
         {pending.length === 0 ? (
-          <p style={{ color: "var(--text-muted)" }}>لا يوجد حجوزات معلقة</p>
+          <p style={{ color: "var(--text-muted)" }}>No pending bookings</p>
         ) : (
           pending.map((b) => (
             <div
@@ -1653,10 +1511,10 @@ function CreateFromBookingModal({
               </div>
               <div style={{ fontSize: 12, marginTop: 4 }}>{b.car_model ?? "—"} | {b.service}</div>
               <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
-                المندوب: {b.agents?.name ?? "—"}
+                Agent: {b.agents?.name ?? "—"}
               </div>
               <button type="button" style={{ ...primaryBtn, marginTop: 8 }} onClick={() => void createOne(b)}>
-                إنشاء بطاقة
+                Create Job Card
               </button>
             </div>
           ))
@@ -1720,7 +1578,7 @@ function JobEditModal({
       });
       if (!r.ok) {
         const e = await r.json().catch(() => ({}));
-        alert(typeof e.error === "string" ? e.error : "فشل الحفظ");
+        alert(typeof e.error === "string" ? e.error : "Save failed");
         return;
       }
       await onSaved();
@@ -1730,21 +1588,21 @@ function JobEditModal({
   };
 
   return (
-    <Modal title="تعديل بطاقة العمل" onClose={onClose}>
+    <Modal title="Edit Job Card" onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <Field label="اسم العميل">
+        <Field label="Customer Name">
           <input className="sk-input" style={inp} value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
         </Field>
-        <Field label="تليفون">
+        <Field label="Phone">
           <input className="sk-input" style={inp} value={phone} onChange={(e) => setPhone(e.target.value)} />
         </Field>
-        <Field label="المركبة">
+        <Field label="Vehicle">
           <input className="sk-input" style={inp} value={car} onChange={(e) => setCar(e.target.value)} />
         </Field>
-        <Field label="الخدمة">
+        <Field label="Service">
           <input className="sk-input" style={inp} value={service} onChange={(e) => setService(e.target.value)} />
         </Field>
-        <Field label="الفرع">
+        <Field label="Branch">
           <select
             className="sk-input"
             style={inp}
@@ -1757,19 +1615,19 @@ function JobEditModal({
             ))}
           </select>
         </Field>
-        <Field label="التاريخ">
+        <Field label="Date">
           <input className="sk-input" style={inp} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </Field>
-        <Field label="السعر المقدر">
+        <Field label="Quoted Price">
           <input className="sk-input" style={inp} value={quoted} onChange={(e) => setQuoted(e.target.value)} />
         </Field>
-        <Field label="المبلغ الفعلي">
+        <Field label="Actual Amount">
           <input className="sk-input" style={inp} value={actual} onChange={(e) => setActual(e.target.value)} />
         </Field>
-        <Field label="ملاحظات">
+        <Field label="Notes">
           <textarea className="sk-input" style={{ ...inp, minHeight: 72 }} value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
         </Field>
-        <Field label="الفنيين">
+        <Field label="Technicians">
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {technicians.map((t) => {
               const on = techSel.includes(t.id);
@@ -1804,9 +1662,9 @@ function JobEditModal({
           </div>
         </Field>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          <button type="button" onClick={onClose} style={ghostBtn}>إلغاء</button>
+          <button type="button" onClick={onClose} style={ghostBtn}>Cancel</button>
           <button type="button" disabled={saving} onClick={() => void submit()} style={primaryBtn}>
-            {saving ? "…" : "حفظ"}
+            {saving ? "…" : "Save"}
           </button>
         </div>
       </div>
@@ -1855,7 +1713,7 @@ function DoubleCheckModal({
       });
       if (!r1.ok) {
         const e = await r1.json().catch(() => ({}));
-        alert(typeof e.error === "string" ? e.error : "فشل إنشاء الموعد");
+        alert(typeof e.error === "string" ? e.error : "Failed to create appointment");
         return;
       }
       const r2 = await fetch(`/api/workshop/jobs/${job.id}`, {
@@ -1865,7 +1723,7 @@ function DoubleCheckModal({
       });
       if (!r2.ok) {
         const e = await r2.json().catch(() => ({}));
-        alert(typeof e.error === "string" ? e.error : "فشل تحديث البطاقة");
+        alert(typeof e.error === "string" ? e.error : "Could not update job card");
         return;
       }
       await onDone();
@@ -1882,8 +1740,8 @@ function DoubleCheckModal({
   })();
 
   return (
-    <Modal title="تحديد موعد دبل اتشيك" onClose={onClose}>
-      <Field label="التاريخ">
+    <Modal title="Schedule Double Check" onClose={onClose}>
+      <Field label="Date">
         <input
           className="sk-input"
           style={inp}
@@ -1893,13 +1751,13 @@ function DoubleCheckModal({
           onChange={(e) => setDate(e.target.value)}
         />
       </Field>
-      <Field label="ملاحظات">
+      <Field label="Notes">
         <textarea className="sk-input" style={{ ...inp, minHeight: 72 }} value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
       </Field>
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
-        <button type="button" onClick={onClose} style={ghostBtn}>إلغاء</button>
+        <button type="button" onClick={onClose} style={ghostBtn}>Cancel</button>
         <button type="button" disabled={loading} onClick={() => void submit()} style={primaryBtn}>
-          {loading ? "…" : "تأكيد"}
+          {loading ? "…" : "Confirm"}
         </button>
       </div>
     </Modal>
@@ -1968,7 +1826,7 @@ function AssignTechniciansModal({
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
-        alert(typeof err.error === "string" ? err.error : "تعذر تحديث البطاقة");
+        alert(typeof err.error === "string" ? err.error : "Could not update job card");
         return;
       }
       await onConfirmed();
@@ -1978,13 +1836,13 @@ function AssignTechniciansModal({
   };
 
   return (
-    <Modal title="تعيين الفنيين" onClose={onClose}>
+    <Modal title="Assign Technicians" onClose={onClose}>
       <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 12 }}>
         {(job.car_model ?? "—") + " — " + job.customer_name}
       </div>
 
       {loading ? (
-        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>جاري التحميل...</p>
+        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>Loading...</p>
       ) : technicians.length === 0 ? (
         <div
           style={{
@@ -1995,10 +1853,10 @@ function AssignTechniciansModal({
           }}
         >
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
-            لا يوجد فنيين مضافين
+            No technicians added
           </div>
           <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-            يمكن للأدمن إضافة فنيين من لوحة الإدارة
+            An admin can add technicians from the Admin panel
           </div>
         </div>
       ) : (
@@ -2070,7 +1928,7 @@ function AssignTechniciansModal({
           disabled={saving}
           onClick={() => void confirmStart(true)}
         >
-          تخطي
+          Skip
         </button>
         <button
           type="button"
@@ -2078,7 +1936,7 @@ function AssignTechniciansModal({
           disabled={saving || selectedIds.length === 0}
           onClick={() => void confirmStart(false)}
         >
-          تأكيد وابدأ التشغيل ▶
+          Confirm & Start Work ▶
         </button>
       </div>
     </Modal>
@@ -2136,7 +1994,7 @@ function TechnicianPanel({
     });
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
-      alert(typeof e.error === "string" ? e.error : "فشل الإضافة");
+      alert(typeof e.error === "string" ? e.error : "Add failed");
       return;
     }
     setName("");
@@ -2158,7 +2016,7 @@ function TechnicianPanel({
   };
 
   const del = async (id: string) => {
-    if (!confirm("تعطيل هذا الفني؟")) return;
+    if (!confirm("Deactivate this technician?")) return;
     await fetch(`/api/workshop/technicians/${id}`, { method: "DELETE" });
     await load();
     await onChanged();
@@ -2187,16 +2045,16 @@ function TechnicianPanel({
           padding: 20,
         }}
         onClick={(e) => e.stopPropagation()}
-        dir="rtl"
+        dir="ltr"
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <span style={{ fontWeight: 700, fontSize: 16 }}>الفنيين</span>
+          <span style={{ fontWeight: 700, fontSize: 16 }}>Technicians</span>
           <button type="button" onClick={onClose} style={ghostBtn}>✕</button>
         </div>
         {Array.from(grouped.entries()).map(([key, techs]) => {
           const title =
             key === "float"
-              ? "متنقل"
+              ? "Floater"
               : branches.find((b) => b.id === key)?.name ?? key;
           return (
             <div key={String(key)} style={{ marginBottom: 20 }}>
@@ -2240,7 +2098,7 @@ function TechnicianPanel({
                   )}
                   <span style={levelStyle(t.level)}>{t.level}</span>
                   <button type="button" style={{ ...ghostBtn, fontSize: 10 }} onClick={() => del(t.id)}>
-                    حذف
+                    Delete
                   </button>
                 </div>
               ))}
@@ -2248,10 +2106,10 @@ function TechnicianPanel({
           );
         })}
         <div style={{ marginTop: 24, paddingTop: 16, borderTop: "1px solid var(--border-subtle)" }}>
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>إضافة فني</div>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>Add technician</div>
           <input
             className="sk-input"
-            placeholder="الاسم"
+            placeholder="Name"
             style={{ width: "100%", marginBottom: 8, padding: 8 }}
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -2272,13 +2130,13 @@ function TechnicianPanel({
             value={branchId}
             onChange={(e) => setBranchId(e.target.value)}
           >
-            <option value="">متنقل</option>
+            <option value="">Floater</option>
             {branches.map((b) => (
               <option key={b.id} value={b.id}>{b.name}</option>
             ))}
           </select>
           <button type="button" style={primaryBtn} onClick={() => void addTech()}>
-            إضافة
+            Add
           </button>
         </div>
       </div>
@@ -2321,7 +2179,7 @@ function Modal({
           overflowY: "auto",
         }}
         onClick={(e) => e.stopPropagation()}
-        dir="rtl"
+        dir="ltr"
       >
         <div style={{ fontWeight: 700, fontSize: "var(--text-lg)", marginBottom: 16 }}>{title}</div>
         {children}

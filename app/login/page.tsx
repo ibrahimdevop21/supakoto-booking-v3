@@ -35,7 +35,7 @@ function LoginContent() {
         if (!res.ok) {
           if (!cancelled) {
             setAgents([]);
-            setAgentsError("تعذر تحميل الأسماء — حاول تاني");
+            setAgentsError("Failed to load agents");
           }
           return;
         }
@@ -43,7 +43,7 @@ function LoginContent() {
           setAgents(data as PublicAgent[]);
         }
       } catch {
-        if (!cancelled) setAgentsError("تعذر تحميل الأسماء — حاول تاني");
+        if (!cancelled) setAgentsError("Failed to load agents");
       } finally {
         if (!cancelled) setAgentsLoading(false);
       }
@@ -61,7 +61,7 @@ function LoginContent() {
 
   const handleSubmit = async () => {
     if (!selected?.id || !password) {
-      setLoginError("اختار اسمك وأدخل الرقم السري");
+      setLoginError("Select your name and enter your password");
       return;
     }
     setLoading(true);
@@ -78,21 +78,21 @@ function LoginContent() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setLoginError(
-          typeof data?.error === "string" ? data.error : "حصل خطأ — حاول تاني"
+          typeof data?.error === "string" ? data.error : "Something went wrong — try again"
         );
         setLoading(false);
         return;
       }
       window.location.href = "/booking";
     } catch {
-      setLoginError("حصل خطأ — حاول تاني");
+      setLoginError("Something went wrong — try again");
       setLoading(false);
     }
   };
 
   const handleManualSubmit = async () => {
     if (!manualUsername.trim() || !manualPassword) {
-      setLoginError("ادخل اسم المستخدم وكلمة المرور");
+      setLoginError("Enter username and password");
       return;
     }
     setLoading(true);
@@ -109,14 +109,14 @@ function LoginContent() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setLoginError(
-          typeof data?.error === "string" ? data.error : "حصل خطأ — حاول تاني"
+          typeof data?.error === "string" ? data.error : "Something went wrong — try again"
         );
         setLoading(false);
         return;
       }
       window.location.href = "/booking";
     } catch {
-      setLoginError("حصل خطأ — حاول تاني");
+      setLoginError("Something went wrong — try again");
       setLoading(false);
     }
   };
@@ -128,7 +128,7 @@ function LoginContent() {
   };
 
   const displayError =
-    loginError || (urlError ? "حصل خطأ — حاول تاني" : "");
+    loginError || (urlError ? "Something went wrong — try again" : "");
 
   const initialLetter = (name: string) => {
     const t = name.trim();
@@ -145,7 +145,7 @@ function LoginContent() {
           justify-content: center;
           padding: 24px 16px;
           position: relative;
-          direction: rtl;
+          direction: ltr;
         }
         .login-card {
           width: 100%;
@@ -398,15 +398,15 @@ function LoginContent() {
 
           {screen === "agents" && (
             <>
-              <h1 className="login-title">مرحباً 👋</h1>
-              <p className="login-subtitle">اختار اسمك</p>
+              <h1 className="login-title">Welcome 👋</h1>
+              <p className="login-subtitle">Select your name</p>
 
               {displayError && (
                 <div className="login-error">{displayError}</div>
               )}
 
               {agentsLoading && (
-                <div className="agents-loading">جاري التحميل…</div>
+                <div className="agents-loading">Loading…</div>
               )}
               {!agentsLoading && agentsError && (
                 <div className="agents-err">{agentsError}</div>
@@ -434,9 +434,9 @@ function LoginContent() {
               )}
               {!agentsLoading && !agentsError && agents.length === 0 && (
                 <p className="agents-empty">
-                  لم تُحمَّل أي أسماء — إمّا لا يوجد مندوبون مفعّلون، أو إعدادات
-                  الخادم تحتاج مراجعة. يمكنك أدناه تسجيل الدخول باسم المستخدم
-                  وكلمة المرور.
+                  No agents loaded — either there are no active agents, or the
+                  server needs configuration. You can sign in with username and
+                  password below.
                 </p>
               )}
               {!agentsLoading && (
@@ -448,7 +448,7 @@ function LoginContent() {
                     setLoginError("");
                   }}
                 >
-                  أو تسجيل الدخول باسم المستخدم وكلمة المرور
+                  Sign in with username and password
                 </button>
               )}
             </>
@@ -460,14 +460,14 @@ function LoginContent() {
                 <div className="login-error">{displayError}</div>
               )}
               <h1 className="login-title" style={{ marginBottom: 8 }}>
-                تسجيل الدخول
+                Sign In
               </h1>
               <p className="login-subtitle" style={{ marginBottom: 20 }}>
-                اسم المستخدم كما هو مسجّل في النظام
+                Username as registered in the system
               </p>
               <div className="field-wrap">
                 <label className="login-label" htmlFor="manual-user">
-                  اسم المستخدم
+                  Username
                 </label>
                 <input
                   id="manual-user"
@@ -480,7 +480,7 @@ function LoginContent() {
               </div>
               <div className="field-wrap" style={{ marginBottom: 8 }}>
                 <label className="login-label" htmlFor="manual-pass">
-                  كلمة المرور
+                  Password
                 </label>
                 <input
                   id="manual-pass"
@@ -501,7 +501,7 @@ function LoginContent() {
                 onClick={handleManualSubmit}
                 disabled={loading}
               >
-                {loading ? "جاري الدخول..." : "دخول ←"}
+                {loading ? "Signing in..." : "Sign In →"}
               </button>
               <button
                 type="button"
@@ -512,7 +512,7 @@ function LoginContent() {
                   setLoginError("");
                 }}
               >
-                ← الرجوع لاختيار الاسم من القائمة
+                ← Back to name list
               </button>
             </div>
           )}
@@ -532,14 +532,14 @@ function LoginContent() {
                     className="step2-change"
                     onClick={goBackToNames}
                   >
-                    تغيير
+                    Change
                   </button>
                 </div>
               </div>
 
               <div className="field-wrap" style={{ marginBottom: 0 }}>
                 <label className="login-label" htmlFor="login-pin">
-                  الرقم السري
+                  Password
                 </label>
                 <input
                   id="login-pin"
@@ -584,10 +584,10 @@ function LoginContent() {
                         animation: "spin 0.75s linear infinite",
                       }}
                     />
-                    جاري الدخول...
+                    Signing in...
                   </span>
                 ) : (
-                  "دخول ←"
+                  "Sign In →"
                 )}
               </button>
             </div>

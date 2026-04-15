@@ -1,8 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cairo:wght@400;600;700&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
+  --font-ui: 'Inter', system-ui, sans-serif;
+  --font-arabic: 'Cairo', system-ui, sans-serif;
   --brand-red: #bf1e2e;
   --brand-red-hover: #a31826;
   --surface-deep: #080c14;
@@ -51,11 +53,19 @@ html, body {
 }
 
 body {
-  font-family: "Cairo", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-family: var(--font-ui);
+  direction: ltr;
   background: var(--surface-deep);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.arabic,
+.arabic-text {
+  font-family: var(--font-arabic);
+  direction: rtl;
+  text-align: right;
 }
 
 /* Subtle grain overlay */
@@ -260,25 +270,16 @@ body::before {
     max-height: 240px !important;
   }
   .booking-form-submit-wrap {
-    position: sticky;
-    bottom: 0;
-    z-index: 5;
+    position: relative;
     padding-top: 8px;
     margin-top: 16px !important;
-    background: linear-gradient(
-      to top,
-      var(--surface-card) 60%,
-      transparent
-    );
   }
   .booking-form-submit-btn {
-    box-shadow:
-      0 -8px 24px rgba(8, 12, 20, 0.8),
-      0 4px 16px rgba(191, 30, 46, 0.3) !important;
+    box-shadow: 0 4px 16px rgba(191, 30, 46, 0.3) !important;
   }
 }
 
-/* Bottom tab bar */
+/* Bottom tab bar (app shell + legacy) */
 .bottom-tab-bar {
   position: fixed;
   bottom: 0;
@@ -286,20 +287,14 @@ body::before {
   right: 0;
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  height: 60px;
+  height: calc(60px + env(safe-area-inset-bottom, 0px));
   background: rgba(13, 18, 32, 0.97);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-top: 1px solid var(--border-subtle);
   z-index: 100;
   padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .bottom-tab-bar {
-    padding-bottom: env(safe-area-inset-bottom);
-    min-height: calc(60px + env(safe-area-inset-bottom));
-  }
+  box-sizing: border-box;
 }
 
 .bottom-tab-btn {
@@ -334,7 +329,7 @@ body::before {
 }
 
 .bottom-tab-icon {
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1;
 }
 
@@ -455,4 +450,49 @@ select.sk-input option {
 /* Day cell hover */
 .cal-day:hover:not(:disabled) {
   background: var(--surface-elevated) !important;
+}
+
+/* App shell: prevent bottom tab bar from covering content */
+@media (max-width: 767px) {
+  .app-content {
+    padding-bottom: 80px !important;
+  }
+}
+
+/* Ensure inputs don't zoom on iOS */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Booking mobile section switcher (Calendar / Bookings / New) — top strip */
+.booking-mobile-seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 10px 12px 0;
+  flex-shrink: 0;
+  background: var(--surface-deep);
+  border-bottom: 1px solid var(--border-subtle);
+  z-index: 30;
+}
+.booking-mobile-seg button {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 10px 6px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+.booking-mobile-seg button.booking-mobile-seg--on {
+  border-color: rgba(191, 30, 46, 0.35);
+  background: rgba(191, 30, 46, 0.12);
+  color: var(--brand-red);
 }
