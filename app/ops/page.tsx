@@ -225,10 +225,10 @@ export default function OpsPage() {
   );
   const [selectedBranch, setSelectedBranch] = useState("");
   const [activeView, setActiveView] = useState<"kanban" | "table">("kanban");
-  const [showTechnicianPanel, setShowTechnicianPanel] = useState(false);
   const [showAddJobModal, setShowAddJobModal] = useState(false);
   const [showCreateFromBookingModal, setShowCreateFromBookingModal] =
     useState(false);
+  const [assignmentJob, setAssignmentJob] = useState<WorkshopJob | null>(null);
 
   const [showJobEditModal, setShowJobEditModal] = useState(false);
   const [editJob, setEditJob] = useState<WorkshopJob | null>(null);
@@ -293,15 +293,10 @@ export default function OpsPage() {
   }, [selectedDate, selectedBranch]);
 
   const fetchTechnicians = useCallback(async () => {
-    const params = new URLSearchParams();
-    if (selectedBranch) params.set("branchId", selectedBranch);
-    const q = params.toString();
-    const r = await fetch(
-      `/api/workshop/technicians${q ? `?${q}` : ""}`
-    );
+    const r = await fetch("/api/workshop/technicians");
     const data = await r.json().catch(() => []);
     setTechnicians(Array.isArray(data) ? data : []);
-  }, [selectedBranch]);
+  }, []);
 
   const fetchPendingBookings = useCallback(async () => {
     const params = new URLSearchParams({ date: selectedDate });
@@ -355,9 +350,13 @@ export default function OpsPage() {
   useEffect(() => {
     if (!agent) return;
     void fetchJobs();
-    void fetchTechnicians();
     void fetchPendingBookings();
-  }, [agent, fetchJobs, fetchTechnicians, fetchPendingBookings]);
+  }, [agent, fetchJobs, fetchPendingBookings]);
+
+  useEffect(() => {
+    if (!agent) return;
+    void fetchTechnicians();
+  }, [agent, fetchTechnicians]);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -544,20 +543,11 @@ export default function OpsPage() {
       case "RECEIVED":
         return next(
           "ابدأ التشغيل ▶",
-          { status: "IN_PROGRESS" },
+          {},
           "#b45309",
           (e) => {
             e.stopPropagation();
-            if (!techIds(job).length) {
-              if (
-                !window.confirm(
-                  "لم يتم تعيين فنيين بعد. هل تريد المتابعة؟"
-                )
-              ) {
-                return;
-              }
-            }
-            void patchJob(job.id, { status: "IN_PROGRESS" });
+            setAssignmentJob(job);
           }
         );
       case "IN_PROGRESS":
@@ -599,6 +589,10 @@ export default function OpsPage() {
   const JobCard = ({ job }: { job: WorkshopJob }) => {
     const st = job.status as JobStatus;
     const meta = STATUS_MAP[st];
+    const assignedTechIds = techIds(job);
+    const agentName =
+      (job.bookings as { agents?: { name?: string } | null } | null)?.agents
+        ?.name ?? "";
     return (
       <div
         style={{
@@ -643,22 +637,49 @@ export default function OpsPage() {
           style={{
             fontSize: 12,
             color: "var(--brand-red)",
-            marginBottom: 8,
+            marginBottom: 6,
           }}
         >
           {job.service}
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
-          {techIds(job).length === 0 ? (
+        {!!job.booking_id && !!agentName && (
+          <div
+            style={{
+              fontSize: 11,
+              color: "var(--text-muted)",
+              marginBottom: 8,
+            }}
+          >
+            المندوب: {agentName}
+          </div>
+        )}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+          {assignedTechIds.length === 0 ? (
             <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
               غير معين
             </span>
           ) : (
-            techIds(job).map((id) => {
+            assignedTechIds.map((id) => {
               const t = techById.get(id);
+              const lvl = t?.level ?? "مساعد فني";
               return (
-                <span key={id} style={levelStyle(t?.level ?? "مساعد فني")}>
-                  {t?.name ?? id}
+                <span
+                  key={id}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    borderRadius: 999,
+                    border: "1px solid var(--border-default)",
+                    background: "var(--surface-card)",
+                    padding: "4px 8px",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  <span>{t?.name ?? id}</span>
+                  <span style={levelStyle(lvl)}>{lvl}</span>
                 </span>
               );
             })
@@ -873,18 +894,6 @@ export default function OpsPage() {
                 gap: 12,
               }}
             >
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => setShowTechnicianPanel(true)}
-                  style={{
-                    ...headerGhostPill,
-                    cursor: "pointer",
-                  }}
-                >
-                  الفنيين
-                </button>
-              )}
               <button
                 type="button"
                 onClick={handleLogout}
@@ -1254,7 +1263,11 @@ export default function OpsPage() {
                     </td>
                     <td style={{ padding: 8 }}>
                       {techIds(job)
-                        .map((id) => techById.get(id)?.name ?? id)
+                        .map((id) => {
+                          const t = techById.get(id);
+                          if (!t) return id;
+                          return `${t.name} (${t.level})`;
+                        })
                         .join("، ") || "—"}
                     </td>
                     <td style={{ padding: 8 }}>
@@ -1371,11 +1384,14 @@ export default function OpsPage() {
         />
       )}
 
-      {isAdmin && showTechnicianPanel && (
-        <TechnicianPanel
-          branches={branches}
-          onClose={() => setShowTechnicianPanel(false)}
-          onChanged={fetchTechnicians}
+      {assignmentJob && (
+        <AssignTechniciansModal
+          job={assignmentJob}
+          onClose={() => setAssignmentJob(null)}
+          onConfirmed={async () => {
+            setAssignmentJob(null);
+            await fetchJobs();
+          }}
         />
       )}
 
@@ -1884,6 +1900,185 @@ function DoubleCheckModal({
         <button type="button" onClick={onClose} style={ghostBtn}>إلغاء</button>
         <button type="button" disabled={loading} onClick={() => void submit()} style={primaryBtn}>
           {loading ? "…" : "تأكيد"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function AssignTechniciansModal({
+  job,
+  onClose,
+  onConfirmed,
+}: {
+  job: WorkshopJob;
+  onClose: () => void;
+  onConfirmed: () => Promise<void>;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [technicians, setTechnicians] = useState<TechnicianRow[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const params = new URLSearchParams({ branchId: job.branch_id });
+      const r = await fetch(`/api/workshop/technicians?${params.toString()}`);
+      const data = await r.json().catch(() => []);
+      if (cancelled) return;
+      setTechnicians(Array.isArray(data) ? data : []);
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [job.branch_id]);
+
+  const groupedByLevel = useMemo(
+    () => [
+      {
+        title: "فني أول",
+        list: technicians.filter((t) => t.level === "فني أول"),
+      },
+      {
+        title: "فني ثاني",
+        list: technicians.filter((t) => t.level === "فني ثاني"),
+      },
+      {
+        title: "مساعد فني",
+        list: technicians.filter((t) => t.level === "مساعد فني"),
+      },
+    ],
+    [technicians]
+  );
+
+  const confirmStart = async (skip: boolean) => {
+    if (!skip && selectedIds.length === 0) return;
+    setSaving(true);
+    try {
+      const r = await fetch(`/api/workshop/jobs/${job.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "IN_PROGRESS",
+          technician_ids: skip ? [] : selectedIds,
+        }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        alert(typeof err.error === "string" ? err.error : "تعذر تحديث البطاقة");
+        return;
+      }
+      await onConfirmed();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal title="تعيين الفنيين" onClose={onClose}>
+      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 12 }}>
+        {(job.car_model ?? "—") + " — " + job.customer_name}
+      </div>
+
+      {loading ? (
+        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>جاري التحميل...</p>
+      ) : technicians.length === 0 ? (
+        <div
+          style={{
+            border: "1px dashed var(--border-default)",
+            borderRadius: "var(--radius-md)",
+            padding: 12,
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
+            لا يوجد فنيين مضافين
+          </div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            يمكن للأدمن إضافة فنيين من لوحة الإدارة
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {groupedByLevel.map((group) => (
+            <div key={group.title}>
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "var(--brand-red)",
+                  marginBottom: 8,
+                }}
+              >
+                {group.title}
+              </div>
+              {group.list.length === 0 ? (
+                <div style={{ color: "var(--text-muted)", fontSize: 11 }}>—</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {group.list.map((t) => {
+                    const selected = selectedIds.includes(t.id);
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() =>
+                          setSelectedIds((prev) =>
+                            selected
+                              ? prev.filter((x) => x !== t.id)
+                              : [...prev, t.id]
+                          )
+                        }
+                        style={{
+                          width: "100%",
+                          textAlign: "right",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 8,
+                          padding: "10px 12px",
+                          borderRadius: "var(--radius-md)",
+                          border: selected
+                            ? "1px solid var(--brand-red)"
+                            : "1px solid var(--border-default)",
+                          background: selected
+                            ? "var(--error-bg)"
+                            : "var(--surface-card)",
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>{t.name}</span>
+                        <span style={levelStyle(t.level)}>{t.level}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+        <button
+          type="button"
+          style={ghostBtn}
+          disabled={saving}
+          onClick={() => void confirmStart(true)}
+        >
+          تخطي
+        </button>
+        <button
+          type="button"
+          style={primaryBtn}
+          disabled={saving || selectedIds.length === 0}
+          onClick={() => void confirmStart(false)}
+        >
+          تأكيد وابدأ التشغيل ▶
         </button>
       </div>
     </Modal>

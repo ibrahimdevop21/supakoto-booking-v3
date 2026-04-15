@@ -1627,7 +1627,7 @@ function BookingPageInner() {
               : dup
                 ? "حجز مكرر"
                 : cap
-                  ? "الفرع ممتئ"
+                  ? "الفرع ممتلئ"
                   : "حصل خطأ"}
           </p>
           <p
@@ -2725,7 +2725,7 @@ function BookingPageInner() {
                               }}
                             >
                               {full
-                                ? "🔴 ممتئ"
+                                ? "🔴 ممتلئ"
                                 : low
                                   ? `🟡 ${s.available} متبقي`
                                   : `🟢 ${s.available} متاح`}
@@ -3107,7 +3107,7 @@ function BookingPageInner() {
                                         {editCap.freezeBlocked
                                           ? "مجمد"
                                           : editCap.full
-                                            ? "ممتئ"
+                                            ? "ممتلئ"
                                             : `${editCap.available} متاح`}
                                       </span>
                                     ) : null}
@@ -3825,7 +3825,7 @@ function BookingPageInner() {
                 >
                   {capState?.freezeBlocked
                     ? `⚠ ${capState?.freezeMessage || "غير متاح"}`
-                    : "🔴 الفرع ممتئ — غيّر التاريخ أو الفرع"}
+                    : "🔴 الفرع ممتلئ — غيّر التاريخ أو الفرع"}
                 </div>
               ) : (
                 <button
@@ -4005,7 +4005,7 @@ function CapBadge({ cap }: { cap: CapState }) {
         }}
       >
         {full
-          ? `ممتئ ${cap.booked}/${cap.capacity}`
+          ? `ممتلئ ${cap.booked}/${cap.capacity}`
           : low
             ? `متبقي ${cap.available} (${cap.booked}/${cap.capacity})`
             : `متاح ${cap.available} (${cap.booked}/${cap.capacity})`}

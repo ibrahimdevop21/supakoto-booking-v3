@@ -547,8 +547,8 @@ function LoginContent() {
                   type="password"
                   inputMode="numeric"
                   autoComplete="current-password"
-                  maxLength={4}
-                  placeholder="••••"
+                  maxLength={20}
+                  placeholder="••••••"
                   className="login-pin-input"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

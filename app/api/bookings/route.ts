@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       .select('*', { count: 'exact', head: true })
       .eq('branch_id', branchId)
       .eq('appointment_date', appointmentDate)
-      .neq('status', 'CANCELLED')
+      .eq('status', 'CONFIRMED')
 
     const booked = count ?? 0
     if (booked >= (branch?.daily_cap ?? 0)) {

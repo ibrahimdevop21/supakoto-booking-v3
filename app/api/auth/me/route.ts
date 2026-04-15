@@ -23,8 +23,15 @@ export async function GET() {
       .eq('user_id', user.id)
       .single()
 
-    if (!agent) {
-      return NextResponse.json({ error: 'Agent not found' }, { status: 404 })
+    if (!agent || !agent.is_active) {
+      await supabase.auth.signOut()
+      const res = NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
+      res.cookies.delete('agent_role')
+      res.cookies.delete('agent_name')
+      return res
     }
 
     return NextResponse.json({

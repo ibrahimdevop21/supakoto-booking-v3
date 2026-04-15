@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     .select(`
       *,
       branches(name),
-      bookings(customer_name, customer_phone, service, addons)
+      bookings(customer_name, customer_phone, service, addons, agents(name))
     `)
     .order('created_at', { ascending: true })
 

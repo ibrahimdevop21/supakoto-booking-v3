@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
       .select('*', { count: 'exact', head: true })
       .eq('branch_id', branchId)
       .eq('appointment_date', date)
-      .neq('status', 'CANCELLED')
+      .eq('status', 'CONFIRMED')
 
     const booked = count ?? 0
     const cap = branch?.daily_cap ?? 0

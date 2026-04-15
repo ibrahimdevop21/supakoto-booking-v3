@@ -27,11 +27,24 @@ export async function GET(req: NextRequest) {
       .lte('freeze_start', date)
       .gte('freeze_end', date)
 
-    const { data: bookings } = await supabase
-      .from('bookings')
-      .select('branch_id, status')
-      .eq('appointment_date', date)
-      .neq('status', 'CANCELLED')
+    const [{ data: confirmedBookings }, { data: onHoldBookings }] =
+      await Promise.all([
+        supabase
+          .from('bookings')
+          .select('branch_id, status')
+          .eq('appointment_date', date)
+          .eq('status', 'CONFIRMED'),
+        supabase
+          .from('bookings')
+          .select('branch_id, status')
+          .eq('appointment_date', date)
+          .eq('status', 'ON-HOLD'),
+      ])
+
+    const bookings = [
+      ...(confirmedBookings ?? []),
+      ...(onHoldBookings ?? []),
+    ]
 
     const result: Record<string, unknown> = {}
 
@@ -42,7 +55,6 @@ export async function GET(req: NextRequest) {
       const freeze = freezes?.find(
         f => f.branch_id === null || f.branch_id === branch.id
       )
-      const booked = bookings?.filter(b => b.branch_id === branch.id).length ?? 0
       const cap = branch.daily_cap
       const confirmed =
         bookings?.filter(
@@ -52,13 +64,14 @@ export async function GET(req: NextRequest) {
         bookings?.filter(
           b => b.branch_id === branch.id && b.status === 'ON-HOLD'
         ).length ?? 0
+      const booked = confirmed
 
       result[branch.name] = {
         branch: branch.name,
         booked,
         capacity: cap,
-        available: cap - booked,
-        full: frozen || booked >= cap,
+        available: cap - confirmed,
+        full: frozen || confirmed >= cap,
         freezeBlocked: frozen ?? false,
         freezeMessage: freeze?.reason ?? undefined,
         confirmed,
